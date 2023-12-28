@@ -59,7 +59,9 @@
 
 /* Struct representing a CLI command that various functions act on.  You will
    basically always want to zero-initialize variables of this type before use.
- */
+
+   After adding arguments to this command via cmdadd() and cmdaddv(), make sure
+   to free() the .argv field BEFORE calling cmdclr(). */
 struct cmd {
 	char **argv;
 	size_t len, cap;
