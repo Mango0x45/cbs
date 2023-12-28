@@ -55,7 +55,7 @@
 #define cmdclr(c) \
 	do { \
 		(c)->len = 0; \
-		(c)->argv = NULL; \
+		*(c)->argv = NULL; \
 	} while (0)
 
 /* Struct representing a CLI command that various functions act on.  You will
