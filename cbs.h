@@ -103,13 +103,9 @@ static void cmdaddv(struct cmd *, char **p, size_t n);
 
 /* Clear (but not free) the command c.  Useful for reusing the same command
    struct to minimize allocations. */
-#define cmdclr(c) \
-	do { \
-		(c)->len = 0; \
-		*(c)->argv = NULL; \
-	} while (0)
+static void cmdclr(struct cmd *c);
 
-/* The cmdexec() macro executes the given command and waits for it to
+/* The cmdexec() function executes the given command and waits for it to
    terminate, returning its exit code.  The cmdexeca() function executes the
    given command and returns immediately, returning its process ID.
 
@@ -118,19 +114,20 @@ static void cmdaddv(struct cmd *, char **p, size_t n);
    size of the output in *n.
 
    cmdexec() and cmdexecb() have the same return values as cmdwait(). */
+static int cmdexec(struct cmd);
 static pid_t cmdexeca(struct cmd);
 static int cmdexecb(struct cmd, char **p, size_t *n);
-#define cmdexec(c) cmdwait(cmdexeca(c));
 
 /* Wait for the process with the given PID to terminate, and return its exit
    status.  If the process was terminated by a signal 256 is returned. */
 static int cmdwait(pid_t);
 
 /* Write a representation of the given command to the given file stream.  This
-   can be used to mimick the echoing behavior of make(1).  The cmdput() macro is
-   a nice convenience macro so you can avoid writing ‘stdout’ all the time. */
+   can be used to mimick the echoing behavior of make(1).  The cmdput() function
+   is a nice convenience function so you can avoid writing ‘stdout’ all the
+   time. */
+static void cmdput(struct cmd);
 static void cmdputf(FILE *, struct cmd);
-#define cmdput(c) cmdputf(stdout, c);
 
 /* Returns if a file exists at the given path.  A return value of false may also
    mean you don’t have the proper file access permissions, which will also set
@@ -143,11 +140,11 @@ static bool fexists(char *);
    A return value <0 means the LHS is older than the RHS.
    A return value of 0 means the LHS and RHS have the same modification date.
 
-   The fmdnewer() and fmdolder() macros are wrappers around fmdcmp() that
+   The fmdnewer() and fmdolder() functions are wrappers around fmdcmp() that
    return true when the LHS is newer or older than the RHS respectively. */
 static int fmdcmp(char *, char *);
-#define fmdnewer(lhs, rhs) (fmdcmp(lhs, rhs) > 0)
-#define fmdolder(lhs, rhs) (fmdcmp(lhs, rhs) < 0)
+static bool fmdolder(char *, char *);
+static bool fmdnewer(char *, char *);
 
 /* Rebuild the build script if either it, or this header file have been
    modified, and execute the newly built script.  You should call the rebuild()
@@ -181,6 +178,8 @@ enum pkg_config_flags {
 	PKGC_LIBS = 1 << 0,
 	PKGC_CFLAGS = 1 << 1,
 };
+
+/* BEGIN DEFINITIONS */
 
 void *
 bufalloc(void *p, size_t n, size_t m)
@@ -254,6 +253,19 @@ cmdaddv(struct cmd *cmd, char **xs, size_t n)
 	memcpy(cmd->argv + cmd->len, xs, n * sizeof(*xs));
 	cmd->len += n;
 	cmd->argv[cmd->len] = NULL;
+}
+
+void
+cmdclr(struct cmd *c)
+{
+	c->len = 0;
+	*c->argv = NULL;
+}
+
+int
+cmdexec(struct cmd c)
+{
+	return cmdwait(cmdexeca(c));
 }
 
 pid_t
@@ -352,6 +364,12 @@ cmdwait(pid_t pid)
 	"%+,-./0123456789:=@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
 
 void
+cmdput(struct cmd c)
+{
+	cmdputf(stdout, c);
+}
+
+void
 cmdputf(FILE *stream, struct cmd cmd)
 {
 	for (size_t i = 0; i < cmd.len; i++) {
@@ -402,6 +420,18 @@ fmdcmp(char *lhs, char *rhs)
 	return sbl.st_mtim.tv_sec == sbr.st_mtim.tv_sec
 	         ? sbl.st_mtim.tv_nsec - sbr.st_mtim.tv_nsec
 	         : sbl.st_mtim.tv_sec - sbr.st_mtim.tv_sec;
+}
+
+bool
+fmdnewer(char *lhs, char *rhs)
+{
+	return fmdcmp(lhs, rhs) > 0;
+}
+
+bool
+fmdolder(char *lhs, char *rhs)
+{
+	return fmdcmp(lhs, rhs) < 0;
 }
 
 void
