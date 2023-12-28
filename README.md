@@ -52,7 +52,7 @@ main(int argc, char **argv)
 	if (!needs_rebuild(TARGET, TARGET ".c"))
 		return EXIT_SUCCESS;
 
-	cmdadd(&cmd, "cc");
+	cmdadd(&cmd, CC);
 	if (!pcquery(&cmd, "liblux", PKGC_LIBS | PKGC_CFLAGS))
 		cmdadd(&cmd, "-llux");
 	cmdadd(&cmd, CFLAGS, "-o", TARGET, TARGET ".c");
