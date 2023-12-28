@@ -72,10 +72,6 @@ struct cmd {
 static int cbs_argc;
 static char **cbs_argv;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* Initializes some data required for this header to work properly.  This should
    be the first thing called in main() with argc and argv passed. */
 static void cbsinit(int, char **);
@@ -155,10 +151,6 @@ enum pkg_config_flags {
 static bool pcquery(struct cmd *, char *, enum pkg_config_flags);
 
 ATTR_FMT noreturn static void die(const char *, ...);
-
-#ifdef __cplusplus
-}
-#endif
 
 void
 die(const char *fmt, ...)
