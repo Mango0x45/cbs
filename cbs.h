@@ -2,12 +2,11 @@
 #define C_BUILD_SYSTEM_H
 
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/wait.h>
 
-#include <ctype.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,13 +39,6 @@
 #	define ATTR_FMT
 #endif
 
-/* Classic min/max macros */
-#define min(x, y) ((x) > (y) ? (y) : (x))
-#define max(x, y) ((x) > (y) ? (x) : (y))
-
-/* Clamp v within the bounds of [n, m] */
-#define clamp(v, n, m) max(min((v), (m)), (n))
-
 /* Get the number of items in the array a */
 #define lengthof(a) (sizeof(a) / sizeof(*(a)))
 
@@ -61,8 +53,9 @@
 /* Struct representing a CLI command that various functions act on.  You will
    basically always want to zero-initialize variables of this type before use.
 
-   After adding arguments to this command via cmdadd() and cmdaddv(), make sure
-   to free() the .argv field BEFORE calling cmdclr(). */
+   After executing a command, you can reuse the already allocated buffer this
+   command holds by calling cmdclr().  When you’re really done with an object of
+   this type, remember to call free() on .argv. */
 struct cmd {
 	char **argv;
 	size_t len, cap;
@@ -79,22 +72,16 @@ static void cbsinit(int, char **);
 
 /* cmdadd() adds the variadic string arguments to the given command.
    Alternatively, the cmdaddv() function adds the n strings pointed to by p to
-   the given command.
-
-   These functions return true on success and false on failure while setting
-   errno. */
-static bool cmdaddv(struct cmd *, char **p, size_t n);
+   the given command. */
+static void cmdaddv(struct cmd *, char **p, size_t n);
 #define cmdadd(cmd, ...) \
 	cmdaddv(cmd, ((char *[]){__VA_ARGS__}), lengthof(((char *[]){__VA_ARGS__})))
 
 /* Rebuild the build script if either it, or this header file have been
    modified, and execute the newly built script.  You should call the rebuild()
    macro at the very beginning of main(), but right after cbsinit().  You
-   probably don’t want to call __rebuild() directly.
-
-   This function returns true on success and false on failure.  On failure errno
-   may or may not be set. */
-static bool __rebuild(char *);
+   probably don’t want to call __rebuild() directly. */
+static void __rebuild(char *);
 #define rebuild() __rebuild(__FILE__)
 
 /* Returns if a file exists at the given path.  A return value of false may also
@@ -110,31 +97,26 @@ static bool fexists(char *);
    standard output to the character buffer pointed to by p.  It also stores the
    size of the output in *n.
 
-   Both of these functions return -1 on error and set errno.  cmdexec() also
-   returns the same values as cmdwait(). */
+   cmdexec() and cmdexecb() have the same return values as cmdwait(). */
 static int cmdexec(struct cmd);
 static pid_t cmdexeca(struct cmd);
 static int cmdexecb(struct cmd, char **p, size_t *n);
 
 /* Wait for the process with the given PID to terminate, and return its exit
-   status.  If the process was terminated by a signal 256 is returned.
-
-   On error this function returns -1 and errno is set. */
+   status.  If the process was terminated by a signal 256 is returned. */
 static int cmdwait(pid_t);
 
 /* Compare the modification dates of the two named files.
 
-   A return value of +1 means the LHS is newer than the RHS.
-   A return value of -1 means the LHS is older than the RHS.
+   A return value >0 means the LHS is newer than the RHS.
+   A return value <0 means the LHS is older than the RHS.
    A return value of 0 means the LHS and RHS have the same modification date.
-   On error, FMDCMP_FAIL is returned and errno is set.
 
-   The fmdnewer() and fmdolder() functions are wrappers around fmdcmp() that
-   return true when the LHS is newer or older than the RHS respectively.  These
-   functions will cause the caller to exit with EXIT_FAILURE on error. */
+   The fmdnewer() and fmdolder() macros are wrappers around fmdcmp() that
+   return true when the LHS is newer or older than the RHS respectively. */
 static int fmdcmp(char *, char *);
-static bool fmdnewer(char *, char *);
-static bool fmdolder(char *, char *);
+#define fmdnewer(lhs, rhs) (fmdcmp(lhs, rhs) > 0)
+#define fmdolder(lhs, rhs) (fmdcmp(lhs, rhs) < 0)
 
 /* Get the number of available CPUs, or -1 on error.  This function also returns
    -1 if the _SC_NPROCESSORS_ONLN flag to sysconf(3) is not available.  In that
@@ -145,13 +127,62 @@ static int nproc(void);
    can be used to mimick the echoing behavior of make(1). */
 static void cmdput(FILE *, struct cmd);
 
+/* Add the arguments returned by an invokation of pkg-config for the library lib
+   to the given command.  The flags argument is one-or-more of the flags in the
+   pkg_config_flags enum bitwise-ORed together.
+
+   If PKGC_CFLAGS is specified, call pkg-config with ‘--cflags’.
+   If PKGC_LIBS is specified, call pkg-config with ‘--libs’.
+
+   This function returns true on success and false if pkg-config is not found on
+   the system.  To check for pkg-configs existance without doing anything
+   meaningful, you can call this function with flags set to 0 and lib set to a
+   VALID library name. */
+static bool pcquery(struct cmd *, char *lib, int flags);
 enum pkg_config_flags {
 	PKGC_LIBS = 1 << 0,
 	PKGC_CFLAGS = 1 << 1,
 };
-static bool pcquery(struct cmd *, char *, int);
 
+/* A wrapper function around realloc().  It behaves exactly the same except
+   instead of taking a buffer size as an argument, it takes a count n of
+   elements, and a size m of each element.  This allows it to properly check for
+   overflow, and errors if overflow would occur. */
+static void *bufalloc(void *, size_t n, size_t m);
+
+/* Error reporting functions.  The die() function takes the same arguments as
+   printf() and prints the corresponding string to stderr.  It also prefixes the
+   string with the command name followed by a colon, and suffixes the string
+   with a colon and the error string returned from strerror().
+
+   diex() is the same as die() but does not print a strerror() error string. */
 ATTR_FMT noreturn static void die(const char *, ...);
+ATTR_FMT noreturn static void diex(const char *, ...);
+
+static size_t
+__next_powerof2(size_t n)
+{
+	if (n && !(n & (n - 1)))
+		return n;
+
+	n--;
+	for (size_t i = 1; i < sizeof(size_t); i <<= 1)
+		n |= n >> i;
+	return n + 1;
+}
+
+void *
+bufalloc(void *p, size_t n, size_t m)
+{
+	if (n != 0 && SIZE_MAX / n < m) {
+		errno = EOVERFLOW;
+		die(__func__);
+	}
+
+	if (!(p = realloc(p, n * m)))
+		die(__func__);
+	return p;
+}
 
 void
 die(const char *fmt, ...)
@@ -166,6 +197,19 @@ die(const char *fmt, ...)
 		fprintf(stderr, ": ");
 	}
 	fprintf(stderr, "%s\n", strerror(e));
+	exit(EXIT_FAILURE);
+}
+
+void
+diex(const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	fprintf(stderr, "%s: ", *cbs_argv);
+	if (fmt)
+		vfprintf(stderr, fmt, ap);
+	fputc('\n', stderr);
 	exit(EXIT_FAILURE);
 }
 
@@ -193,7 +237,7 @@ cmdwait(pid_t pid)
 	for (;;) {
 		int ws;
 		if (waitpid(pid, &ws, 0) == -1)
-			return -1;
+			die("waitpid");
 
 		if (WIFEXITED(ws))
 			return WEXITSTATUS(ws);
@@ -206,8 +250,7 @@ cmdwait(pid_t pid)
 int
 cmdexec(struct cmd c)
 {
-	pid_t pid;
-	return (pid = cmdexeca(c)) == -1 ? -1 : cmdwait(pid);
+	return cmdwait(cmdexeca(c));
 }
 
 pid_t
@@ -217,7 +260,7 @@ cmdexeca(struct cmd c)
 
 	switch (pid = fork()) {
 	case -1:
-		return -1;
+		die("fork");
 	case 0:
 		execvp(*c.argv, c.argv);
 		die("execvp: %s", *c.argv);
@@ -240,11 +283,11 @@ cmdexecb(struct cmd c, char **p, size_t *n)
 	struct stat sb;
 
 	if (pipe(fds) == -1)
-		return -1;
+		die("pipe");
 
 	switch (pid = fork()) {
 	case -1:
-		return -1;
+		die("fork");
 	case 0:
 		close(fds[FD_R]);
 		if (dup2(fds[FD_W], STDOUT_FILENO) == -1)
@@ -265,13 +308,10 @@ cmdexecb(struct cmd c, char **p, size_t *n)
 		ssize_t nr;
 
 		if ((nr = read(fds[FD_R], tmp, blksize)) == -1)
-			return -1;
+			die("read");
 		if (!nr)
 			break;
-		if (!(buf = realloc(buf, len + nr))) {
-			free(buf);
-			return -1;
-		}
+		buf = bufalloc(buf, len + nr, sizeof(char));
 		memcpy(buf + len, tmp, nr);
 		len += nr;
 	}
@@ -282,24 +322,17 @@ cmdexecb(struct cmd c, char **p, size_t *n)
 	return cmdwait(pid);
 }
 
-bool
+void
 cmdaddv(struct cmd *cmd, char **xs, size_t n)
 {
-	size_t old = cmd->cap;
-
-	while (cmd->len + n >= cmd->cap)
-		cmd->cap = cmd->cap * 2 + 2;
-
-	if (old < cmd->cap) {
-		cmd->argv = (char **)realloc(cmd->argv, cmd->cap * sizeof(char *));
-		if (!cmd->argv)
-			return false;
+	if (cmd->len + n >= cmd->cap) {
+		cmd->cap = __next_powerof2(cmd->len + n) + 2;
+		cmd->argv = bufalloc(cmd->argv, cmd->cap, sizeof(char *));
 	}
 
 	memcpy(cmd->argv + cmd->len, xs, n * sizeof(*xs));
 	cmd->len += n;
 	cmd->argv[cmd->len] = NULL;
-	return true;
 }
 
 /* import shlex
@@ -344,38 +377,20 @@ cmdput(FILE *stream, struct cmd cmd)
 	}
 }
 
-#define FMDCMP_FAIL -2
-
 int
 fmdcmp(char *lhs, char *rhs)
 {
 	struct stat sbl, sbr;
 
-	return stat(lhs, &sbl) == -1 || stat(rhs, &sbr) == -1 ? FMDCMP_FAIL
-	     : sbl.st_mtim.tv_sec == sbr.st_mtim.tv_sec
-	         ? clamp(sbl.st_mtim.tv_nsec - sbr.st_mtim.tv_nsec, -1, +1)
-	         : clamp(sbl.st_mtim.tv_sec - sbr.st_mtim.tv_sec, -1, +1);
+	if (stat(lhs, &sbl) == -1)
+		die("%s", lhs);
+	if (stat(rhs, &sbr) == -1)
+		die("%s", rhs);
+
+	return sbl.st_mtim.tv_sec == sbr.st_mtim.tv_sec
+	         ? sbl.st_mtim.tv_nsec - sbr.st_mtim.tv_nsec
+	         : sbl.st_mtim.tv_sec - sbr.st_mtim.tv_sec;
 }
-
-#define __fmd_newer_older(t) \
-	int n = fmdcmp(lhs, rhs); \
-	if (n == FMDCMP_FAIL) \
-		die("failed to stat"); \
-	return n == t;
-
-bool
-fmdnewer(char *lhs, char *rhs)
-{
-	__fmd_newer_older(+1)
-}
-
-bool
-fmdolder(char *lhs, char *rhs)
-{
-	__fmd_newer_older(-1)
-}
-
-#undef __fmd_newer_older
 
 bool
 fexists(char *f)
@@ -383,23 +398,21 @@ fexists(char *f)
 	return !access(f, F_OK);
 }
 
-bool
+void
 __rebuild(char *src)
 {
 	struct cmd cmd = {0};
 
 	if (fmdnewer(*cbs_argv, src) && fmdnewer(*cbs_argv, __FILE__))
-		return true;
+		return;
 
-	if (!cmdadd(&cmd, "cc", "-o", *cbs_argv, src))
-		return false;
+	cmdadd(&cmd, "cc", "-o", *cbs_argv, src);
 	cmdput(stdout, cmd);
 	if (cmdexec(cmd))
-		return false;
+		diex("Compilation of build script failed");
 
 	cmdclr(&cmd);
-	if (!cmdaddv(&cmd, cbs_argv, cbs_argc))
-		return false;
+	cmdaddv(&cmd, cbs_argv, cbs_argc);
 	cmdput(stdout, cmd);
 	exit(cmdexec(cmd));
 }
@@ -407,37 +420,35 @@ __rebuild(char *src)
 bool
 pcquery(struct cmd *cmd, char *lib, int flags)
 {
+	int ec;
 	char *p, *q, *s;
 	size_t n;
-	bool ret = false;
 	struct cmd c = {0};
 
 	p = NULL;
 
-	if (!cmdadd(&c, "pkg-config"))
-		goto out;
-	if ((flags & PKGC_LIBS) && !cmdadd(&c, "--libs"))
-		goto out;
-	if ((flags & PKGC_CFLAGS) && !cmdadd(&c, "--cflags"))
-		goto out;
-	if (!cmdadd(&c, lib))
-		goto out;
+	cmdadd(&c, "pkg-config");
+	if (flags & PKGC_LIBS)
+		cmdadd(&c, "--libs");
+	if (flags & PKGC_CFLAGS)
+		cmdadd(&c, "--cflags");
+	cmdadd(&c, lib);
 
-	if (cmdexecb(c, &p, &n) != EXIT_SUCCESS)
-		goto out;
+	if ((ec = cmdexecb(c, &p, &n))) {
+		if (errno == ENOENT) {
+			free(c.argv);
+			return false;
+		}
+		diex("pkg-config terminated with exit-code %d", ec);
+	}
 
 	for (q = strtok(p, " \n\r\t\v"); q; q = strtok(NULL, " \n\r\t\v")) {
 		if (!(s = strdup(q)))
-			goto out;
-		if (!cmdadd(cmd, s))
-			goto out;
+			die("strdup");
+		cmdadd(cmd, s);
 	}
 
-	ret = true;
-out:
-	free(p);
-	free(c.argv);
-	return ret;
+	return true;
 }
 
 #endif /* !C_BUILD_SYSTEM_H */
