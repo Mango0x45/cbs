@@ -175,7 +175,7 @@ enum pkg_config_flags {
 void *
 bufalloc(void *p, size_t n, size_t m)
 {
-	if (n != 0 && SIZE_MAX / n < m) {
+	if (n && SIZE_MAX / n < m) {
 		errno = EOVERFLOW;
 		die(__func__);
 	}
