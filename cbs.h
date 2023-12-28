@@ -121,8 +121,10 @@ static int cmdexecb(struct cmd, char **p, size_t *n);
 static int cmdwait(pid_t);
 
 /* Write a representation of the given command to the given file stream.  This
-   can be used to mimick the echoing behavior of make(1). */
-static void cmdput(FILE *, struct cmd);
+   can be used to mimick the echoing behavior of make(1).  The cmdput() macro is
+   a nice convenience macro so you can avoid writing ‘stdout’ all the time. */
+static void cmdputf(FILE *, struct cmd);
+#define cmdput(c) cmdputf(stdout, c);
 
 /* Returns if a file exists at the given path.  A return value of false may also
    mean you don’t have the proper file access permissions, which will also set
@@ -346,7 +348,7 @@ cmdwait(pid_t pid)
 	"%+,-./0123456789:=@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
 
 void
-cmdput(FILE *stream, struct cmd cmd)
+cmdputf(FILE *stream, struct cmd cmd)
 {
 	for (size_t i = 0; i < cmd.len; i++) {
 		bool safe = true;
@@ -407,13 +409,13 @@ __rebuild(char *src)
 		return;
 
 	cmdadd(&cmd, "cc", "-o", *cbs_argv, src);
-	cmdput(stdout, cmd);
+	cmdput(cmd);
 	if (cmdexec(cmd))
 		diex("Compilation of build script failed");
 
 	cmdclr(&cmd);
 	cmdaddv(&cmd, cbs_argv, cbs_argc);
-	cmdput(stdout, cmd);
+	cmdput(cmd);
 	exit(cmdexec(cmd));
 }
 
