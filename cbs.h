@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -148,7 +149,7 @@ enum pkg_config_flags {
 	PKGC_LIBS = 1 << 0,
 	PKGC_CFLAGS = 1 << 1,
 };
-static bool pcquery(struct cmd *, char *, enum pkg_config_flags);
+static bool pcquery(struct cmd *, char *, int);
 
 ATTR_FMT noreturn static void die(const char *, ...);
 
@@ -404,12 +405,14 @@ __rebuild(char *src)
 }
 
 bool
-pcquery(struct cmd *cmd, char *lib, enum pkg_config_flags flags)
+pcquery(struct cmd *cmd, char *lib, int flags)
 {
-	char *p = NULL;
+	char *p, *q, *s;
 	size_t n;
 	bool ret = false;
 	struct cmd c = {0};
+
+	p = NULL;
 
 	if (!cmdadd(&c, "pkg-config"))
 		goto out;
@@ -422,7 +425,13 @@ pcquery(struct cmd *cmd, char *lib, enum pkg_config_flags flags)
 
 	if (cmdexecb(c, &p, &n) != EXIT_SUCCESS)
 		goto out;
-	printf("%.*s", (int)n, p);
+
+	for (q = strtok(p, " \n\r\t\v"); q; q = strtok(NULL, " \n\r\t\v")) {
+		if (!(s = strdup(q)))
+			goto out;
+		if (!cmdadd(cmd, s))
+			goto out;
+	}
 
 	ret = true;
 out:
