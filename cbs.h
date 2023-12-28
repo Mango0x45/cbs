@@ -80,8 +80,8 @@ struct cmd {
 
 /* Internal global versions of argc and argv, so our functions and macros can
    access them from anywhere. */
-static int cbs_argc;
-static char **cbs_argv;
+static int __cbs_argc;
+static char **__cbs_argv;
 
 /* A wrapper function around realloc().  It behaves exactly the same except
    instead of taking a buffer size as an argument, it takes a count n of
@@ -202,7 +202,7 @@ die(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	fprintf(stderr, "%s: ", *cbs_argv);
+	fprintf(stderr, "%s: ", *__cbs_argv);
 	if (fmt) {
 		vfprintf(stderr, fmt, ap);
 		fprintf(stderr, ": ");
@@ -217,7 +217,7 @@ diex(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	fprintf(stderr, "%s: ", *cbs_argv);
+	fprintf(stderr, "%s: ", *__cbs_argv);
 	if (fmt)
 		vfprintf(stderr, fmt, ap);
 	fputc('\n', stderr);
@@ -227,8 +227,8 @@ diex(const char *fmt, ...)
 void
 cbsinit(int argc, char **argv)
 {
-	cbs_argc = argc;
-	cbs_argv = argv;
+	__cbs_argc = argc;
+	__cbs_argv = argv;
 }
 
 static size_t
@@ -415,16 +415,16 @@ __rebuild(char *src)
 {
 	struct cmd cmd = {0};
 
-	if (fmdnewer(*cbs_argv, src) && fmdnewer(*cbs_argv, __FILE__))
+	if (fmdnewer(*__cbs_argv, src) && fmdnewer(*__cbs_argv, __FILE__))
 		return;
 
-	cmdadd(&cmd, "cc", "-o", *cbs_argv, src);
+	cmdadd(&cmd, "cc", "-o", *__cbs_argv, src);
 	cmdput(cmd);
 	if (cmdexec(cmd))
 		diex("Compilation of build script failed");
 
 	cmdclr(&cmd);
-	cmdaddv(&cmd, cbs_argv, cbs_argc);
+	cmdaddv(&cmd, __cbs_argv, __cbs_argc);
 	cmdput(cmd);
 	exit(cmdexec(cmd));
 }
