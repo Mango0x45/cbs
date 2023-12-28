@@ -2,4 +2,5 @@
 *.c
 compile_commands.json
 main
+Makefile
 test
