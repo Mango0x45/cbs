@@ -20,6 +20,19 @@
 #ifndef C_BUILD_SYSTEM_H
 #define C_BUILD_SYSTEM_H
 
+/* Assert that the user is building for a supported platform.  The only portable
+   way to check for POSIX is to validate that unistd.h exists.  This is only
+   possible without compiler extensions in C23 (although some compilers support
+   it as an extension in earlier editions), so people compiling for pre-C23
+   might not get this error if on a bad platform, and may end up being a bit
+   confused.
+
+   It’s just a maybe though, this is nothing more than a sanity check for the
+   users sake. */
+#if defined(__has_include) && !__has_include(<unistd.h>)
+#	error "Non-POSIX platform detected"
+#endif
+
 #include <sys/stat.h>
 #include <sys/wait.h>
 
