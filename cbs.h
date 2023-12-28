@@ -13,7 +13,9 @@
    the program on error.  If this is undesired behavior, feel free to edit the
    functions to return errors.
 
-   There are a few exceptions to the above rule, and they are documented. */
+   There are a few exceptions to the above rule, and they are documented.
+
+   TODO: Support Windows */
 
 #ifndef C_BUILD_SYSTEM_H
 #define C_BUILD_SYSTEM_H
