@@ -165,7 +165,11 @@ static int nproc(void);
    This function returns true on success and false if pkg-config is not found on
    the system.  To check for pkg-configs existance without doing anything
    meaningful, you can call this function with flags set to 0 and lib set to a
-   VALID library name. */
+   VALID library name.
+
+   The arguments this function appends to the given command are heap-allocated.
+   If you care about free()ing them, you can figure out their indicies in
+   cmd.argv by getting cmd.len both before- and after calling this function. */
 static bool pcquery(struct cmd *, char *lib, int flags);
 enum pkg_config_flags {
 	PKGC_LIBS = 1 << 0,
