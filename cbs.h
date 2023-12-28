@@ -449,7 +449,6 @@ __rebuild(char *src)
 
 	cmdclr(&cmd);
 	cmdaddv(&cmd, __cbs_argv, __cbs_argc);
-	cmdput(cmd);
 	execvp(*cmd.argv, cmd.argv);
 	die("execvp: %s", *cmd.argv);
 }
