@@ -3,7 +3,7 @@
 CBS is a single-header library for writing build scripts in C.  The
 philosophy behind this project is that the only tool you should ever need
 to build your C projects is a C compiler.  Not Make, not Cmake, not
-autoconf — just a C compiler.
+Autoconf — just a C compiler.
 
 Using C for your build system also has numerous advantages.  C is
 portable to almost any platform, C is a turing-complete language that
