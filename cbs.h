@@ -1,3 +1,14 @@
+/* Single-header library to help write build scripts in C.  This library is
+   POSIX compliant, so it should work on all respectible UNIX-like systems.
+
+   All functions and macros are documented.  You can figure out the API pretty
+   easily by just reading the comments in this file.  Any identifier prefixed
+   with a double-underscore (‘__’) is not meant for you to touch, but since this
+   file should be downloaded into your repository, you can touch them anyways if
+   you really want.
+
+   This file does not support C89.  Fuck C89, that shit is ancient.  Move on. */
+
 #ifndef C_BUILD_SYSTEM_H
 #define C_BUILD_SYSTEM_H
 
