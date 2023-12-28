@@ -56,28 +56,6 @@
 #	define ATTR_FMT
 #endif
 
-/* Get the number of items in the array a */
-#define lengthof(a) (sizeof(a) / sizeof(*(a)))
-
-/* Clear (but not free) the command c.  Useful for reusing the same command
-   struct to minimize allocations. */
-#define cmdclr(c) \
-	do { \
-		(c)->len = 0; \
-		*(c)->argv = NULL; \
-	} while (0)
-
-/* Struct representing a CLI command that various functions act on.  You will
-   basically always want to zero-initialize variables of this type before use.
-
-   After executing a command, you can reuse the already allocated buffer this
-   command holds by calling cmdclr().  When you’re really done with an object of
-   this type, remember to call free() on .argv. */
-struct cmd {
-	char **argv;
-	size_t len, cap;
-};
-
 /* Internal global versions of argc and argv, so our functions and macros can
    access them from anywhere. */
 static int __cbs_argc;
@@ -102,12 +80,34 @@ ATTR_FMT noreturn static void diex(const char *, ...);
    be the first thing called in main() with argc and argv passed. */
 static void cbsinit(int, char **);
 
+/* Get the number of items in the array a */
+#define lengthof(a) (sizeof(a) / sizeof(*(a)))
+
+/* Struct representing a CLI command that various functions act on.  You will
+   basically always want to zero-initialize variables of this type before use.
+
+   After executing a command, you can reuse the already allocated buffer this
+   command holds by calling cmdclr().  When you’re really done with an object of
+   this type, remember to call free() on .argv. */
+struct cmd {
+	char **argv;
+	size_t len, cap;
+};
+
 /* cmdadd() adds the variadic string arguments to the given command.
    Alternatively, the cmdaddv() function adds the n strings pointed to by p to
    the given command. */
 static void cmdaddv(struct cmd *, char **p, size_t n);
 #define cmdadd(cmd, ...) \
 	cmdaddv(cmd, ((char *[]){__VA_ARGS__}), lengthof(((char *[]){__VA_ARGS__})))
+
+/* Clear (but not free) the command c.  Useful for reusing the same command
+   struct to minimize allocations. */
+#define cmdclr(c) \
+	do { \
+		(c)->len = 0; \
+		*(c)->argv = NULL; \
+	} while (0)
 
 /* The cmdexec() function executes the given command and waits for it to
    terminate, returning its exit code.  The cmdexeca() function executes the
