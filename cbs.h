@@ -7,7 +7,13 @@
    file should be downloaded into your repository, you can touch them anyways if
    you really want.
 
-   This file does not support C89.  Fuck C89, that shit is ancient.  Move on. */
+   This file does not support C89.  Fuck C89, that shit is ancient.  Move on.
+
+   IMPORTANT NOTE: All the functions and macros in this library will terminate
+   the program on error.  If this is undesired behavior, feel free to edit the
+   functions to return errors.
+
+   There are a few exceptions to the above rule, and they are documented. */
 
 #ifndef C_BUILD_SYSTEM_H
 #define C_BUILD_SYSTEM_H
