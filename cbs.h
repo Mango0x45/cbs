@@ -77,6 +77,21 @@ struct cmd {
 static int cbs_argc;
 static char **cbs_argv;
 
+/* A wrapper function around realloc().  It behaves exactly the same except
+   instead of taking a buffer size as an argument, it takes a count n of
+   elements, and a size m of each element.  This allows it to properly check for
+   overflow, and errors if overflow would occur. */
+static void *bufalloc(void *, size_t n, size_t m);
+
+/* Error reporting functions.  The die() function takes the same arguments as
+   printf() and prints the corresponding string to stderr.  It also prefixes the
+   string with the command name followed by a colon, and suffixes the string
+   with a colon and the error string returned from strerror().
+
+   diex() is the same as die() but does not print a strerror() error string. */
+ATTR_FMT noreturn static void die(const char *, ...);
+ATTR_FMT noreturn static void diex(const char *, ...);
+
 /* Initializes some data required for this header to work properly.  This should
    be the first thing called in main() with argc and argv passed. */
 static void cbsinit(int, char **);
@@ -87,18 +102,6 @@ static void cbsinit(int, char **);
 static void cmdaddv(struct cmd *, char **p, size_t n);
 #define cmdadd(cmd, ...) \
 	cmdaddv(cmd, ((char *[]){__VA_ARGS__}), lengthof(((char *[]){__VA_ARGS__})))
-
-/* Rebuild the build script if either it, or this header file have been
-   modified, and execute the newly built script.  You should call the rebuild()
-   macro at the very beginning of main(), but right after cbsinit().  You
-   probably don’t want to call __rebuild() directly. */
-static void __rebuild(char *);
-#define rebuild() __rebuild(__FILE__)
-
-/* Returns if a file exists at the given path.  A return value of false may also
-   mean you don’t have the proper file access permissions, which will also set
-   errno. */
-static bool fexists(char *);
 
 /* The cmdexec() function executes the given command and waits for it to
    terminate, returning its exit code.  The cmdexeca() function executes the
@@ -117,6 +120,15 @@ static int cmdexecb(struct cmd, char **p, size_t *n);
    status.  If the process was terminated by a signal 256 is returned. */
 static int cmdwait(pid_t);
 
+/* Write a representation of the given command to the given file stream.  This
+   can be used to mimick the echoing behavior of make(1). */
+static void cmdput(FILE *, struct cmd);
+
+/* Returns if a file exists at the given path.  A return value of false may also
+   mean you don’t have the proper file access permissions, which will also set
+   errno. */
+static bool fexists(char *);
+
 /* Compare the modification dates of the two named files.
 
    A return value >0 means the LHS is newer than the RHS.
@@ -129,14 +141,17 @@ static int fmdcmp(char *, char *);
 #define fmdnewer(lhs, rhs) (fmdcmp(lhs, rhs) > 0)
 #define fmdolder(lhs, rhs) (fmdcmp(lhs, rhs) < 0)
 
+/* Rebuild the build script if either it, or this header file have been
+   modified, and execute the newly built script.  You should call the rebuild()
+   macro at the very beginning of main(), but right after cbsinit().  You
+   probably don’t want to call __rebuild() directly. */
+static void __rebuild(char *);
+#define rebuild() __rebuild(__FILE__)
+
 /* Get the number of available CPUs, or -1 on error.  This function also returns
    -1 if the _SC_NPROCESSORS_ONLN flag to sysconf(3) is not available.  In that
    case, errno will not be set. */
 static int nproc(void);
-
-/* Write a representation of the given command to the given file stream.  This
-   can be used to mimick the echoing behavior of make(1). */
-static void cmdput(FILE *, struct cmd);
 
 /* Add the arguments returned by an invokation of pkg-config for the library lib
    to the given command.  The flags argument is one-or-more of the flags in the
@@ -154,33 +169,6 @@ enum pkg_config_flags {
 	PKGC_LIBS = 1 << 0,
 	PKGC_CFLAGS = 1 << 1,
 };
-
-/* A wrapper function around realloc().  It behaves exactly the same except
-   instead of taking a buffer size as an argument, it takes a count n of
-   elements, and a size m of each element.  This allows it to properly check for
-   overflow, and errors if overflow would occur. */
-static void *bufalloc(void *, size_t n, size_t m);
-
-/* Error reporting functions.  The die() function takes the same arguments as
-   printf() and prints the corresponding string to stderr.  It also prefixes the
-   string with the command name followed by a colon, and suffixes the string
-   with a colon and the error string returned from strerror().
-
-   diex() is the same as die() but does not print a strerror() error string. */
-ATTR_FMT noreturn static void die(const char *, ...);
-ATTR_FMT noreturn static void diex(const char *, ...);
-
-static size_t
-__next_powerof2(size_t n)
-{
-	if (n && !(n & (n - 1)))
-		return n;
-
-	n--;
-	for (size_t i = 1; i < sizeof(size_t); i <<= 1)
-		n |= n >> i;
-	return n + 1;
-}
 
 void *
 bufalloc(void *p, size_t n, size_t m)
@@ -231,31 +219,29 @@ cbsinit(int argc, char **argv)
 	cbs_argv = argv;
 }
 
-int
-nproc(void)
+static size_t
+__next_powerof2(size_t n)
 {
-#ifdef _SC_NPROCESSORS_ONLN
-	return (int)sysconf(_SC_NPROCESSORS_ONLN);
-#else
-	errno = 0;
-	return -1;
-#endif
+	if (n && !(n & (n - 1)))
+		return n;
+
+	n--;
+	for (size_t i = 1; i < sizeof(size_t); i <<= 1)
+		n |= n >> i;
+	return n + 1;
 }
 
-int
-cmdwait(pid_t pid)
+void
+cmdaddv(struct cmd *cmd, char **xs, size_t n)
 {
-	for (;;) {
-		int ws;
-		if (waitpid(pid, &ws, 0) == -1)
-			die("waitpid");
-
-		if (WIFEXITED(ws))
-			return WEXITSTATUS(ws);
-
-		if (WIFSIGNALED(ws))
-			return 256;
+	if (cmd->len + n >= cmd->cap) {
+		cmd->cap = __next_powerof2(cmd->len + n) + 2;
+		cmd->argv = bufalloc(cmd->argv, cmd->cap, sizeof(char *));
 	}
+
+	memcpy(cmd->argv + cmd->len, xs, n * sizeof(*xs));
+	cmd->len += n;
+	cmd->argv[cmd->len] = NULL;
 }
 
 int
@@ -333,17 +319,20 @@ cmdexecb(struct cmd c, char **p, size_t *n)
 	return cmdwait(pid);
 }
 
-void
-cmdaddv(struct cmd *cmd, char **xs, size_t n)
+int
+cmdwait(pid_t pid)
 {
-	if (cmd->len + n >= cmd->cap) {
-		cmd->cap = __next_powerof2(cmd->len + n) + 2;
-		cmd->argv = bufalloc(cmd->argv, cmd->cap, sizeof(char *));
-	}
+	for (;;) {
+		int ws;
+		if (waitpid(pid, &ws, 0) == -1)
+			die("waitpid");
 
-	memcpy(cmd->argv + cmd->len, xs, n * sizeof(*xs));
-	cmd->len += n;
-	cmd->argv[cmd->len] = NULL;
+		if (WIFEXITED(ws))
+			return WEXITSTATUS(ws);
+
+		if (WIFSIGNALED(ws))
+			return 256;
+	}
 }
 
 /* import shlex
@@ -388,6 +377,12 @@ cmdput(FILE *stream, struct cmd cmd)
 	}
 }
 
+bool
+fexists(char *f)
+{
+	return !access(f, F_OK);
+}
+
 int
 fmdcmp(char *lhs, char *rhs)
 {
@@ -401,12 +396,6 @@ fmdcmp(char *lhs, char *rhs)
 	return sbl.st_mtim.tv_sec == sbr.st_mtim.tv_sec
 	         ? sbl.st_mtim.tv_nsec - sbr.st_mtim.tv_nsec
 	         : sbl.st_mtim.tv_sec - sbr.st_mtim.tv_sec;
-}
-
-bool
-fexists(char *f)
-{
-	return !access(f, F_OK);
 }
 
 void
@@ -426,6 +415,17 @@ __rebuild(char *src)
 	cmdaddv(&cmd, cbs_argv, cbs_argc);
 	cmdput(stdout, cmd);
 	exit(cmdexec(cmd));
+}
+
+int
+nproc(void)
+{
+#ifdef _SC_NPROCESSORS_ONLN
+	return (int)sysconf(_SC_NPROCESSORS_ONLN);
+#else
+	errno = 0;
+	return -1;
+#endif
 }
 
 bool
