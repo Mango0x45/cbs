@@ -1,0 +1,5 @@
+.cache/
+*.c
+compile_commands.json
+main
+test
