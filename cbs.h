@@ -109,7 +109,7 @@ static void cmdaddv(struct cmd *, char **p, size_t n);
 		*(c)->argv = NULL; \
 	} while (0)
 
-/* The cmdexec() function executes the given command and waits for it to
+/* The cmdexec() macro executes the given command and waits for it to
    terminate, returning its exit code.  The cmdexeca() function executes the
    given command and returns immediately, returning its process ID.
 
@@ -118,9 +118,9 @@ static void cmdaddv(struct cmd *, char **p, size_t n);
    size of the output in *n.
 
    cmdexec() and cmdexecb() have the same return values as cmdwait(). */
-static int cmdexec(struct cmd);
 static pid_t cmdexeca(struct cmd);
 static int cmdexecb(struct cmd, char **p, size_t *n);
+#define cmdexec(c) cmdwait(cmdexeca(c));
 
 /* Wait for the process with the given PID to terminate, and return its exit
    status.  If the process was terminated by a signal 256 is returned. */
@@ -254,12 +254,6 @@ cmdaddv(struct cmd *cmd, char **xs, size_t n)
 	memcpy(cmd->argv + cmd->len, xs, n * sizeof(*xs));
 	cmd->len += n;
 	cmd->argv[cmd->len] = NULL;
-}
-
-int
-cmdexec(struct cmd c)
-{
-	return cmdwait(cmdexeca(c));
 }
 
 pid_t
