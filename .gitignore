@@ -1,5 +1,6 @@
 .cache/
 *.c
+.clangd
 compile_commands.json
 main
 Makefile
