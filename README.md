@@ -80,7 +80,7 @@ for demonstration purposes.
 #define CBS_PTHREAD
 #include "cbs.h"
 
-#define CC	 "cc"
+#define CC     "cc"
 #define CFLAGS "-Wall", "-Wextra", "-Werror", "-O3"
 #define TARGET "my-file"
 
