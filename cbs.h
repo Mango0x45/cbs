@@ -286,6 +286,7 @@ die(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
+	flockfile(stderr);
 	fprintf(stderr, "%s: ", *_cbs_argv);
 	if (fmt) {
 		vfprintf(stderr, fmt, ap);
@@ -301,6 +302,7 @@ diex(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
+	flockfile(stderr);
 	fprintf(stderr, "%s: ", *_cbs_argv);
 	if (fmt)
 		vfprintf(stderr, fmt, ap);
@@ -457,6 +459,7 @@ cmdput(cmd_t c)
 void
 cmdputf(FILE *stream, cmd_t cmd)
 {
+	flockfile(stream);
 	for (size_t i = 0; i < cmd._len; i++) {
 		bool safe = true;
 		char *p, *q;
@@ -484,6 +487,7 @@ cmdputf(FILE *stream, cmd_t cmd)
 
 		putc(i == cmd._len - 1 ? '\n' : ' ', stream);
 	}
+	funlockfile(stream);
 }
 
 bool
