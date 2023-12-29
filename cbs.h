@@ -172,9 +172,9 @@ static bool fexists(char *);
 
    The fmdnewer() and fmdolder() functions are wrappers around fmdcmp() that
    return true when the LHS is newer or older than the RHS respectively. */
-static int fmdcmp(char *, char *);
-static bool fmdolder(char *, char *);
-static bool fmdnewer(char *, char *);
+static int fmdcmp(const char *, const char *);
+static bool fmdolder(const char *, const char *);
+static bool fmdnewer(const char *, const char *);
 
 /* Rebuild the build script if either it, or this header file have been
    modified, and execute the newly built script.  You should call the rebuild()
@@ -493,7 +493,7 @@ fexists(char *f)
 }
 
 int
-fmdcmp(char *lhs, char *rhs)
+fmdcmp(const char *lhs, const char *rhs)
 {
 	struct stat sbl, sbr;
 
@@ -508,13 +508,13 @@ fmdcmp(char *lhs, char *rhs)
 }
 
 bool
-fmdnewer(char *lhs, char *rhs)
+fmdnewer(const char *lhs, const char *rhs)
 {
 	return fmdcmp(lhs, rhs) > 0;
 }
 
 bool
-fmdolder(char *lhs, char *rhs)
+fmdolder(const char *lhs, const char *rhs)
 {
 	return fmdcmp(lhs, rhs) < 0;
 }
