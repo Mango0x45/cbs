@@ -32,6 +32,8 @@ header, there is no need to manually recompile — the script will rebuild
 itself.
 
 ```c
+#include <stdlib.h>
+
 #include "cbs.h"
 
 #define needs_rebuild(dst, src) (!fexists(dst) || fmdolder(dst, src))
@@ -44,7 +46,7 @@ int
 main(int argc, char **argv)
 {
 	int ec;
-	struct cmd cmd = {0};
+	cmd_t cmd = {0};
 
 	cbsinit(argc, argv);
 	rebuild();
@@ -58,8 +60,101 @@ main(int argc, char **argv)
 	cmdadd(&cmd, CFLAGS, "-o", TARGET, TARGET ".c");
 	cmdput(cmd);
 	if ((ec = cmdexec(cmd)) != EXIT_SUCCESS)
-		diex("%s failed with exit-code %d", *cmd.argv, ec);
+		diex("%s failed with exit-code %d", *cmd._argv, ec);
 
 	return EXIT_SUCCESS;
+}
+```
+
+
+## Example With Threads
+
+This is like the previous example, but you should compile with -lpthread.  This
+is not the most efficient way to build a multi-file project, but this is simply
+for demonstration purposes.
+
+```c
+#include <errno.h>
+#include <string.h>
+
+#define CBS_PTHREAD
+#include "cbs.h"
+
+#define CC	 "cc"
+#define CFLAGS "-Wall", "-Wextra", "-Werror", "-O3"
+#define TARGET "my-file"
+
+static const char *sources[] = {"foo.c", "bar.c", "baz.c"};
+static const char *objects[] = {"foo.o", "bar.o", "baz.o"};
+
+static void build(void *);
+
+int
+main(int argc, char **argv)
+{
+	int ec, cpus;
+	bool needs_rebuild = false;
+	cmd_t cmd = {0};
+	tpool_t tp;
+
+	cbsinit(argc, argv);
+	rebuild();
+
+	if (!fexists(TARGET))
+		needs_rebuild = true;
+	else {
+		for (size_t i = 0; i < lengthof(sources); i++) {
+			if (fmdolder(TARGET, sources[i])) {
+				needs_rebuild = true;
+				break;
+			}
+		}
+	}
+
+	if (!needs_rebuild)
+		return EXIT_SUCCESS;
+
+	if ((cpus = nproc()) == -1) {
+		if (errno)
+			die("nproc");
+		/* System not properly supported; default to 8 threads */
+		cpus = 8;
+	}
+	tpinit(&tp, cpus);
+
+	for (size_t i = 0; i < lengthof(sources); i++)
+		tpenq(&tp, build, sources[i], NULL);
+	tpwait(&tp);
+	tpfree(&tp);
+
+	cmdadd(&cmd, CC, "-o", TARGET);
+	cmdaddv(&cmd, objects, lengthof(objects));
+	cmdput(cmd);
+	if ((ec = cmdexec(cmd)) != EXIT_SUCCESS)
+		diex("%s failed with exit-code %d", *cmd._argv, ec);
+
+	return EXIT_SUCCESS;
+}
+
+void
+build(void *arg)
+{
+	int ec;
+	char *dst, *src = arg;
+	cmd_t cmd = {0};
+
+	for (size_t i = 0; i < lengthof(sources); i++) {
+		/* All the sources and objects have 3 letter names + an extension */
+		if (strncmp(src, objects[i], 3) == 0) {
+			dst = objects[i];
+			break;
+		}
+	}
+
+	cmdadd(&cmd, CC, CFLAGS, "-o", dst, "-c", src);
+	cmdput(cmd);
+	if ((ec = cmdexec(cmd)) != EXIT_SUCCESS)
+		diex("%s failed with exit-code %d", *cmd._argv, ec);
+	free(cmd._argv);
 }
 ```
