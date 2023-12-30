@@ -202,6 +202,15 @@ static int fmdcmp(const char *, const char *);
 static bool fmdolder(const char *, const char *);
 static bool fmdnewer(const char *, const char *);
 
+/* Report if any of n files specified by p render the file base outdated.  If
+   the file base does not exist, this function returns true.  You will typically
+   call this with a compiled program as base, and C source files as p.  The
+   macro foutdated() is a wrapper around foutdatedv() that allows you to specify
+   the sources to base as variadic arguments instead of as an array. */
+static bool foutdatedv(const char *base, const char **p, size_t n);
+#define foutdated(s, ...) \
+	foutdatedv(s, _vtoa(__VA_ARGS__), lengthof(_vtoa(__VA_ARGS__)))
+
 /* Rebuild the build script if either it, or this header file have been
    modified, and execute the newly built script.  You should call the rebuild()
    macro at the very beginning of main(), but right after cbsinit().  You
@@ -548,6 +557,18 @@ bool
 fmdolder(const char *lhs, const char *rhs)
 {
 	return fmdcmp(lhs, rhs) < 0;
+}
+
+bool
+foutdatedv(const char *src, const char **deps, size_t n)
+{
+	if (!fexists(src))
+		return true;
+	for (size_t i = 0; i < n; i++) {
+		if (fmdolder(src, deps[i]))
+			return true;
+	}
+	return false;
 }
 
 void
