@@ -163,7 +163,9 @@ static void cmdclr(cmd_t *c);
 
    The cmdexecb() function is like cmdexec() except it writes the given commands
    standard output to the character buffer pointed to by p.  It also stores the
-   size of the output in *n.  The character buffer p is null-terminated.
+   size of the output in *n.  The character buffer p is null-terminated.  If the
+   given command produces no output to the standard output, p will be set to
+   NULL.
 
    cmdexec() and cmdexecb() have the same return values as cmdwait(). */
 static int cmdexec(cmd_t);
@@ -451,7 +453,8 @@ cmdexecb(cmd_t c, char **p, size_t *n)
 	}
 
 	close(fds[FD_R]);
-	buf[len] = 0;
+	if (buf)
+		buf[len] = 0;
 	*p = buf;
 	*n = len;
 	return cmdwait(pid);
@@ -627,6 +630,9 @@ pcquery(cmd_t *cmd, char *lib, int flags)
 		}
 		diex("pkg-config terminated with exit-code %d", ec);
 	}
+
+	if (!p)
+		return true;
 
 	/* Remove trailing newline */
 	p[n - 1] = 0;
