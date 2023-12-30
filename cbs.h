@@ -162,7 +162,7 @@ static void cmdputf(FILE *, cmd_t);
 /* Returns if a file exists at the given path.  A return value of false may also
    mean you don’t have the proper file access permissions, which will also set
    errno. */
-static bool fexists(char *);
+static bool fexists(const char *);
 
 /* Compare the modification dates of the two named files.
 
@@ -491,7 +491,7 @@ cmdputf(FILE *stream, cmd_t cmd)
 }
 
 bool
-fexists(char *f)
+fexists(const char *f)
 {
 	return !access(f, F_OK);
 }
