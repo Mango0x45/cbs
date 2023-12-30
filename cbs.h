@@ -314,8 +314,7 @@ diex(const char *fmt, ...)
 	va_start(ap, fmt);
 	flockfile(stderr);
 	fprintf(stderr, "%s: ", *_cbs_argv);
-	if (fmt)
-		vfprintf(stderr, fmt, ap);
+	vfprintf(stderr, fmt, ap);
 	fputc('\n', stderr);
 	exit(EXIT_FAILURE);
 }
