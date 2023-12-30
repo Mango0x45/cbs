@@ -54,6 +54,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wordexp.h>
 
 /* C23 changed a lot so we want to check for it, and some idiot decided that
    __STDC_VERSION__ is an optional macro */
@@ -70,15 +71,19 @@
 #	include <stdnoreturn.h>
 #endif
 
-/* Give helpful diagnostics when people use die() incorrectly on GCC.  C23
+/* Give helpful diagnostics when people use die() incorrectly on GCC, and
+   disable fallthrough warnings as they might popup for some people.  C23
    introduced C++ attribute syntax, so we need a check for that too. */
 #ifdef __GNUC__
 #	ifdef CBS_IS_C23
+#		define ATTR_FF  [[fallthrough]]
 #		define ATTR_FMT [[gnu::format(printf, 1, 2)]]
 #	else
+#		define ATTR_FF  __attribute__((fallthrough))
 #		define ATTR_FMT __attribute__((format(printf, 1, 2)))
 #	endif
 #else
+#	define ATTR_FF
 #	define ATTR_FMT
 #endif
 
@@ -571,9 +576,10 @@ bool
 pcquery(cmd_t *cmd, char *lib, int flags)
 {
 	int ec;
-	char *p, *q, *s;
+	char *p;
 	size_t n;
 	cmd_t c = {0};
+	wordexp_t we;
 
 	p = NULL;
 
@@ -592,12 +598,31 @@ pcquery(cmd_t *cmd, char *lib, int flags)
 		diex("pkg-config terminated with exit-code %d", ec);
 	}
 
-	for (q = strtok(p, " \n\r\t\v"); q; q = strtok(NULL, " \n\r\t\v")) {
-		if (!(s = strdup(q)))
-			die("strdup");
-		cmdadd(cmd, s);
+	/* Remove trailing newline */
+	p[n - 1] = 0;
+
+	switch (wordexp(p, &we, 0)) {
+	case WRDE_BADCHAR:
+		ATTR_FF;
+	case WRDE_BADVAL:
+		ATTR_FF;
+	case WRDE_SYNTAX:
+		errno = EINVAL;
+		die("wordexp");
+	case WRDE_NOSPACE:
+		errno = ENOMEM;
+		die("wordexp");
 	}
 
+	for (size_t i = 0; i < we.we_wordc; i++) {
+		char *p = strdup(we.we_wordv[i]);
+		if (!p)
+			die(__func__);
+		cmdadd(cmd, p);
+	}
+
+	wordfree(&we);
+	free(p);
 	return true;
 }
 
