@@ -54,6 +54,8 @@
 #include <sys/wait.h>
 
 #include <errno.h>
+#include <libgen.h>
+#include <limits.h>
 #ifdef CBS_PTHREAD
 #	include <pthread.h>
 #endif
@@ -210,10 +212,10 @@ static bool foutdatedv(const char *base, const char **p, size_t n);
 	foutdatedv(s, (const char **)_vtoa(__VA_ARGS__), \
 	           lengthof(_vtoa(__VA_ARGS__)))
 
-/* Rebuild the build script if either it, or this header file have been
-   modified, and execute the newly built script.  You should call the rebuild()
-   macro at the very beginning of main(), but right after cbsinit().  You
-   probably don’t want to call _rebuild() directly. */
+/* Rebuild the build script if it has been modified, and execute the newly built
+   script.  You should call the rebuild() macro at the very beginning of main(),
+   but right after cbsinit().  You probably don’t want to call _rebuild()
+   directly. */
 static void _rebuild(char *);
 #define rebuild() _rebuild(__FILE__)
 
@@ -571,13 +573,40 @@ foutdatedv(const char *src, const char **deps, size_t n)
 	return false;
 }
 
+static char *
+_getcwd(void)
+{
+	char *buf = NULL;
+	size_t n = 0;
+
+	for (;;) {
+		n += PATH_MAX;
+		buf = bufalloc(buf, n, sizeof(char));
+		if (getcwd(buf, n))
+			break;
+		if (errno != ERANGE)
+			die("getcwd");
+	}
+
+	return buf;
+}
+
 void
 _rebuild(char *src)
 {
+	char *cwd;
 	cmd_t cmd = {0};
 
-	if (fmdnewer(*_cbs_argv, src) && fmdnewer(*_cbs_argv, __FILE__))
+	cwd = _getcwd();
+
+	if (chdir(dirname(src)) == -1)
+		die("chdir: %s", dirname(src));
+	if (foutdated(*_cbs_argv, src)) {
+		if (chdir(cwd) == -1)
+			die("chdir: %s", cwd);
 		return;
+	}
+	free(cwd);
 
 	cmdadd(&cmd, "cc");
 #ifdef CBS_PTHREAD
