@@ -205,7 +205,8 @@ static bool fmdnewer(const char *, const char *);
    the sources to base as variadic arguments instead of as an array. */
 static bool foutdatedv(const char *base, const char **p, size_t n);
 #define foutdated(s, ...) \
-	foutdatedv(s, _vtoa(__VA_ARGS__), lengthof(_vtoa(__VA_ARGS__)))
+	foutdatedv(s, (const char **)_vtoa(__VA_ARGS__), \
+	           lengthof(_vtoa(__VA_ARGS__)))
 
 /* Rebuild the build script if either it, or this header file have been
    modified, and execute the newly built script.  You should call the rebuild()
