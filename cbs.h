@@ -23,7 +23,7 @@
 
    There are a few exceptions to the above rule, and they are documented.
 
-   TODO: Support Windows */
+   This library does not aim to ever support Windows */
 
 #ifndef C_BUILD_SYSTEM_H
 #define C_BUILD_SYSTEM_H
