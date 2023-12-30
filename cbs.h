@@ -82,6 +82,12 @@
 #	define ATTR_FMT
 #endif
 
+/* Clang defines this attribute, and while it does nothing it does serve as
+   good documentation. */
+#ifndef _Nullable
+#	define _Nullable
+#endif
+
 /* Internal global versions of argc and argv, so our functions and macros can
    access them from anywhere. */
 static int _cbs_argc;
@@ -91,15 +97,18 @@ static char **_cbs_argv;
    instead of taking a buffer size as an argument, it takes a count n of
    elements, and a size m of each element.  This allows it to properly check for
    overflow, and errors if overflow would occur. */
-static void *bufalloc(void *, size_t n, size_t m);
+static void *bufalloc(void *_Nullable, size_t n, size_t m);
 
 /* Error reporting functions.  The die() function takes the same arguments as
    printf() and prints the corresponding string to stderr.  It also prefixes the
    string with the command name followed by a colon, and suffixes the string
    with a colon and the error string returned from strerror().
 
+   If you want to print just the error message and no custom text, NULL may be
+   passed to die().  NULL should not be passed to diex().
+
    diex() is the same as die() but does not print a strerror() error string. */
-ATTR_FMT noreturn static void die(const char *, ...);
+ATTR_FMT noreturn static void die(const char *_Nullable, ...);
 ATTR_FMT noreturn static void diex(const char *, ...);
 
 /* Initializes some data required for this header to work properly.  This should
@@ -259,7 +268,8 @@ static void tpwait(tpool_t *);
    NULL, it will be ignored.
 
    The free() function is a valid argument to the free parameter. */
-static void tpenq(tpool_t *, tfunc_t fn, void *arg, tfree_func_t free);
+static void tpenq(tpool_t *, tfunc_t fn, void *arg,
+                  tfree_func_t _Nullable free);
 static struct _tjob *_tpdeq(tpool_t *);
 
 #endif /* CBS_PTHREAD */
