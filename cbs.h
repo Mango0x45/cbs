@@ -150,7 +150,7 @@ static void cmdclr(cmd_t *c);
 
    The cmdexecb() function is like cmdexec() except it writes the given commands
    standard output to the character buffer pointed to by p.  It also stores the
-   size of the output in *n.
+   size of the output in *n.  The character buffer p is null-terminated.
 
    cmdexec() and cmdexecb() have the same return values as cmdwait(). */
 static int cmdexec(cmd_t);
@@ -422,12 +422,13 @@ cmdexecb(cmd_t c, char **p, size_t *n)
 			die("read");
 		if (!nr)
 			break;
-		buf = bufalloc(buf, len + nr, sizeof(char));
+		buf = bufalloc(buf, len + nr + 1, sizeof(char));
 		memcpy(buf + len, tmp, nr);
 		len += nr;
 	}
 
 	close(fds[FD_R]);
+	buf[len] = 0;
 	*p = buf;
 	*n = len;
 	return cmdwait(pid);
