@@ -4,7 +4,7 @@
    You can find the CBS git repository at https://git.sr.ht/~mango/cbs and you
    can include this in your project with the following command:
 
-       $ wget 'https://git.sr.ht/~mango/cbs/tree/master/item/cbs.h'
+       $ wget 'https://git.sr.ht/~mango/cbs/blob/master/cbs.h'
 
    This library is licensed under the 0-Clause BSD license, and as such you may
    do whatever you want to it, however you want to it, whenever you want.  You
