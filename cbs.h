@@ -80,19 +80,15 @@
 #	include <stdnoreturn.h>
 #endif
 
-/* Give helpful diagnostics when people use die() incorrectly on GCC, and
-   disable fallthrough warnings as they might popup for some people.  C23
+/* Give helpful diagnostics when people use die() incorrectly on GCC.  C23
    introduced C++ attribute syntax, so we need a check for that too. */
 #ifdef __GNUC__
 #	ifdef CBS_IS_C23
-#		define ATTR_FF  [[fallthrough]]
 #		define ATTR_FMT [[gnu::format(printf, 1, 2)]]
 #	else
-#		define ATTR_FF  __attribute__((fallthrough))
 #		define ATTR_FMT __attribute__((format(printf, 1, 2)))
 #	endif
 #else
-#	define ATTR_FF
 #	define ATTR_FMT
 #endif
 
@@ -636,9 +632,7 @@ pcquery(cmd_t *cmd, char *lib, int flags)
 
 	switch (wordexp(p, &we, 0)) {
 	case WRDE_BADCHAR:
-		ATTR_FF;
 	case WRDE_BADVAL:
-		ATTR_FF;
 	case WRDE_SYNTAX:
 		errno = EINVAL;
 		die("wordexp");
