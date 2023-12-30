@@ -102,6 +102,9 @@
 #	define _Nullable
 #endif
 
+/* Convert the given variadic arguments to a string array */
+#define _vtoa(...) ((char *[]){__VA_ARGS__})
+
 /* Internal global versions of argc and argv, so our functions and macros can
    access them from anywhere. */
 static int _cbs_argc;
@@ -152,7 +155,7 @@ typedef struct {
    the given command. */
 static void cmdaddv(cmd_t *, char **p, size_t n);
 #define cmdadd(cmd, ...) \
-	cmdaddv(cmd, ((char *[]){__VA_ARGS__}), lengthof(((char *[]){__VA_ARGS__})))
+	cmdaddv(cmd, _vtoa(__VA_ARGS__), lengthof(_vtoa(__VA_ARGS__)))
 
 /* Clear (but not free) the command c.  Useful for reusing the same command
    struct to minimize allocations. */
