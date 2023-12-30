@@ -1,6 +1,15 @@
 /* Single-header library to help write build scripts in C.  This library is
    POSIX compliant, so it should work on all respectible UNIX-like systems.
 
+   You can find the CBS git repository at https://git.sr.ht/~mango/cbs and you
+   can include this in your project with the following command:
+
+       $ wget 'https://git.sr.ht/~mango/cbs/tree/master/item/cbs.h'
+
+   This library is licensed under the 0-Clause BSD license, and as such you may
+   do whatever you want to it, however you want to it, whenever you want.  You
+   are encouraged in fact to modify this library to suit your specific usecase.
+
    All functions and macros are documented.  You can figure out the API pretty
    easily by just reading the comments in this file.
 
