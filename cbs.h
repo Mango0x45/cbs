@@ -160,6 +160,10 @@ typedef struct {
 	size_t _len, _cap;
 } cmd_t;
 
+/* Returns whether or not a binary of the given name exists in the users
+   environment as defined by $PATH. */
+static bool binexists(const char *);
+
 /* cmdadd() adds the variadic string arguments to the given command.
    Alternatively, the cmdaddv() function adds the n strings pointed to by p to
    the given command. */
@@ -376,6 +380,32 @@ _next_powerof2(size_t n)
 	for (size_t i = 1; i < sizeof(size_t); i <<= 1)
 		n |= n >> i;
 	return n + 1;
+}
+
+bool
+binexists(const char *name)
+{
+	char *p, *path;
+
+	if (!(path = getenv("PATH")))
+		diex("PATH environment variable not found");
+
+	if (!(path = strdup(path)))
+		die("strdup");
+	p = strtok(path, ":");
+	while (p) {
+		char buf[PATH_MAX];
+		snprintf(buf, sizeof(buf), "%s/%s", p, name);
+		if (fexists(buf)) {
+			free(path);
+			return true;
+		}
+
+		p = strtok(NULL, ":");
+	}
+
+	free(path);
+	return false;
 }
 
 void
