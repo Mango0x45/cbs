@@ -108,6 +108,18 @@
 static int _cbs_argc;
 static char **_cbs_argv;
 
+/* A vector of strings used to accumulate output of functions such as pcquery().
+   The array of strings buf has length len, and is not null-terminated.  You
+   should always zero-initialize variables of this type. */
+struct strv {
+	char **buf;
+	size_t len;
+};
+
+/* Free and zero a string vector.  Because this function zeros the structure, it
+   is safe to reuse the vector after this function is called. */
+static void strvfree(struct strv *);
+
 /* A wrapper function around realloc().  It behaves exactly the same except
    instead of taking a buffer size as an argument, it takes a count n of
    elements, and a size m of each element.  This allows it to properly check for
@@ -224,23 +236,17 @@ static void _rebuild(char *);
    case, errno will not be set. */
 static int nproc(void);
 
-/* Add the arguments returned by an invokation of pkg-config for the library lib
-   to the given command.  The flags argument is one-or-more of the flags in the
-   pkg_config_flags enum bitwise-ORed together.
+/* Append the arguments returned by an invokation of pkg-config for the library
+   lib to the given string vector.  The flags argument is one-or-more of the
+   flags in the pkg_config_flags enum bitwise-ORed together.
 
    If PKGC_CFLAGS is specified, call pkg-config with ‘--cflags’.
    If PKGC_LIBS is specified, call pkg-config with ‘--libs’.
 
    This function returns true on success and false if pkg-config is not found on
-   the system.  To check for pkg-configs existance without doing anything
-   meaningful, you can call this function with flags set to 0 and lib set to a
-   VALID library name.
-
-   The arguments this function appends to the given command are heap-allocated.
-   If you care about deallocating them, you can figure out their indicies in
-   the commands ._argv field by getting cmd._len both before and after calling
-   this function. */
-static bool pcquery(cmd_t *, char *lib, int flags);
+   the system.  To check for pkg-configs existance, you can use the binexists()
+   function. */
+static bool pcquery(struct strv *, char *lib, int flags);
 enum pkg_config_flags {
 	PKGC_LIBS = 1 << 0,
 	PKGC_CFLAGS = 1 << 1,
@@ -302,6 +308,13 @@ static struct _tjob *_tpdeq(tpool_t *);
 #endif /* CBS_PTHREAD */
 
 /* BEGIN DEFINITIONS */
+
+void
+strvfree(struct strv *v)
+{
+	free(v->buf);
+	*v = (struct strv){0};
+}
 
 void *
 bufalloc(void *p, size_t n, size_t m)
@@ -635,7 +648,7 @@ nproc(void)
 }
 
 bool
-pcquery(cmd_t *cmd, char *lib, int flags)
+pcquery(struct strv *vec, char *lib, int flags)
 {
 	int ec;
 	char *p;
@@ -677,11 +690,12 @@ pcquery(cmd_t *cmd, char *lib, int flags)
 		die("wordexp");
 	}
 
+	vec->buf = bufalloc(vec->buf, vec->len + we.we_wordc, sizeof(char *));
 	for (size_t i = 0; i < we.we_wordc; i++) {
 		char *p = strdup(we.we_wordv[i]);
 		if (!p)
 			die(__func__);
-		cmdadd(cmd, p);
+		vec->buf[vec->len++] = p;
 	}
 
 	wordfree(&we);
