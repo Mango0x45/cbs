@@ -367,7 +367,14 @@ void
 cbsinit(int argc, char **argv)
 {
 	_cbs_argc = argc;
-	_cbs_argv = argv;
+	_cbs_argv = bufalloc(NULL, argc, sizeof(char *));
+	for (int i = 0; i < argc; i++) {
+		if (!(_cbs_argv[i] = strdup(argv[i]))) {
+			/* We might not have set _cbs_argv[0] yet, so we can’t use die() */
+			fprintf(stderr, "%s: strdup: %s\n", *argv, strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+	}
 }
 
 static size_t
