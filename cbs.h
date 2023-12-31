@@ -644,30 +644,42 @@ _getcwd(void)
 void
 _rebuild(char *src)
 {
-	char *cwd;
+	char *cwd, *cpy1, *cpy2, *dn, *bn;
 	cmd_t cmd = {0};
 
 	cwd = _getcwd();
+	if (!(cpy1 = strdup(*_cbs_argv)))
+		die("strdup");
+	if (!(cpy2 = strdup(*_cbs_argv)))
+		die("strdup");
+	dn = dirname(cpy1);
+	bn = basename(cpy2);
 
-	if (chdir(dirname(src)) == -1)
-		die("chdir: %s", dirname(src));
-	if (foutdated(*_cbs_argv, src)) {
+	if (chdir(dn) == -1)
+		die("chdir: %s", dn);
+	if (!foutdated(bn, src)) {
 		if (chdir(cwd) == -1)
 			die("chdir: %s", cwd);
+		free(cpy1);
+		free(cpy2);
+		free(cwd);
 		return;
 	}
-	free(cwd);
 
 	cmdadd(&cmd, "cc");
 #ifdef CBS_PTHREAD
 	cmdadd(&cmd, "-lpthread");
 #endif
-	cmdadd(&cmd, "-o", *_cbs_argv, src);
+	cmdadd(&cmd, "-o", bn, src);
 	cmdput(cmd);
 	if (cmdexec(cmd))
 		diex("Compilation of build script failed");
 
 	cmdclr(&cmd);
+
+	if (chdir(cwd) == -1)
+		die("chdir: %s", cwd);
+
 	cmdaddv(&cmd, _cbs_argv, _cbs_argc);
 	execvp(*cmd._argv, cmd._argv);
 	die("execvp: %s", *cmd._argv);
