@@ -36,8 +36,6 @@ itself.
 
 #include "cbs.h"
 
-#define needs_rebuild(dst, src) (!fexists(dst) || fmdolder(dst, src))
-
 #define CC     "cc"
 #define CFLAGS "-Wall", "-Wextra", "-Werror", "-O3"
 #define TARGET "my-file"
@@ -47,17 +45,21 @@ main(int argc, char **argv)
 {
 	int ec;
 	cmd_t cmd = {0};
+	struct strv v = {0};
 
 	cbsinit(argc, argv);
 	rebuild();
 
-	if (!needs_rebuild(TARGET, TARGET ".c"))
+	if (!foutdated(TARGET, TARGET ".c"))
 		return EXIT_SUCCESS;
 
 	cmdadd(&cmd, CC);
-	if (!pcquery(&cmd, "liblux", PKGC_LIBS | PKGC_CFLAGS))
+	if (pcquery(&v, "liblux", PKGC_LIBS | PKGC_CFLAGS))
+		cmdaddv(&cmd, v.buf, v.len);
+	else
 		cmdadd(&cmd, "-llux");
 	cmdadd(&cmd, CFLAGS, "-o", TARGET, TARGET ".c");
+
 	cmdput(cmd);
 	if ((ec = cmdexec(cmd)) != EXIT_SUCCESS)
 		diex("%s failed with exit-code %d", *cmd._argv, ec);
@@ -93,25 +95,13 @@ int
 main(int argc, char **argv)
 {
 	int ec, cpus;
-	bool needs_rebuild = false;
 	cmd_t cmd = {0};
 	tpool_t tp;
 
 	cbsinit(argc, argv);
 	rebuild();
 
-	if (!fexists(TARGET))
-		needs_rebuild = true;
-	else {
-		for (size_t i = 0; i < lengthof(sources); i++) {
-			if (fmdolder(TARGET, sources[i])) {
-				needs_rebuild = true;
-				break;
-			}
-		}
-	}
-
-	if (!needs_rebuild)
+	if (!foutdatedv(TARGET, sources, lengthof(sources)))
 		return EXIT_SUCCESS;
 
 	if ((cpus = nproc()) == -1) {
