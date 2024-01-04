@@ -50,6 +50,9 @@
 #	error "Non-POSIX platform detected"
 #endif
 
+/* Required for st_mtim */
+#define _POSIX_C_SOURCE 200809L
+
 #include <sys/stat.h>
 #include <sys/wait.h>
 
