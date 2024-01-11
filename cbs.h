@@ -55,8 +55,9 @@
 #	error "Non-POSIX platform detected"
 #endif
 
-/* Required for st_mtim */
-#define _POSIX_C_SOURCE 200809L
+#ifdef __APPLE__
+#	define st_mtim st_mtimespec
+#endif
 
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -882,6 +883,10 @@ tpwait(tpool_t *tp)
 
 #ifdef __GNUC__
 #	pragma GCC diagnostic pop
+#endif
+
+#ifdef __APPLE__
+#	undef st_mtim
 #endif
 
 #endif /* !C_BUILD_SYSTEM_H */
