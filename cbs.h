@@ -76,15 +76,14 @@
 #include <unistd.h>
 #include <wordexp.h>
 
-/* C23 changed a lot so we want to check for it, and some idiot decided that
-   __STDC_VERSION__ is an optional macro */
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202000
-#	define CBS_IS_C23
+/* C23 changed a lot so we want to check for it */
+#if __STDC_VERSION__ >= 202000
+#	define CBS_IS_C23 1
 #endif
 
 /* Some C23 compat.  In C23 booleans are actual keywords, and the noreturn
    attribute is different. */
-#ifdef CBS_IS_C23
+#if CBS_IS_C23
 #	define noreturn [[noreturn]]
 #else
 #	include <stdbool.h>
@@ -94,7 +93,7 @@
 /* Give helpful diagnostics when people use die() incorrectly on GCC.  C23
    introduced C++ attribute syntax, so we need a check for that too. */
 #ifdef __GNUC__
-#	ifdef CBS_IS_C23
+#	if CBS_IS_C23
 #		define ATTR_FMT [[gnu::format(printf, 1, 2)]]
 #	else
 #		define ATTR_FMT __attribute__((format(printf, 1, 2)))
