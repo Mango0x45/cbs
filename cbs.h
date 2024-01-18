@@ -209,6 +209,16 @@ static int cmdwait(pid_t);
 static void cmdput(cmd_t);
 static void cmdputf(FILE *, cmd_t);
 
+/* Expand the environment variable s using /bin/sh expansion rules and store the
+   results in the given string vector.  If the environment variable is NULL or
+   empty, then store the strings specified by the array p of length n.
+
+   env_or_default() is the same as env_or_defaultv() but you provide p as
+   variadic arguments. */
+static void env_or_defaultv(struct strv *, const char *s, char **p, size_t n);
+#define env_or_default(sv, s, ...) \
+	env_or_defaultv((sv), (s), _vtoa(__VA_ARGS__), lengthof(_vtoa(__VA_ARGS__)))
+
 /* Returns if a file exists at the given path.  A return value of false may also
    mean you don’t have the proper file access permissions, which will also set
    errno. */
@@ -584,6 +594,41 @@ cmdputf(FILE *stream, cmd_t cmd)
 		putc(i == cmd._len - 1 ? '\n' : ' ', stream);
 	}
 	funlockfile(stream);
+}
+
+void
+env_or_defaultv(struct strv *sv, const char *s, char **p, size_t n)
+{
+	wordexp_t we;
+	const char *ev;
+
+	if ((ev = getenv(s)) && *ev) {
+		switch (wordexp(ev, &we, WRDE_NOCMD)) {
+		case WRDE_BADCHAR:
+		case WRDE_BADVAL:
+		case WRDE_SYNTAX:
+			errno = EINVAL;
+			die("wordexp");
+		case WRDE_NOSPACE:
+			errno = ENOMEM;
+			die("wordexp");
+		}
+
+		sv->buf = bufalloc(NULL, we.we_wordc, sizeof(*sv->buf));
+		for (size_t i = 0; i < we.we_wordc; i++) {
+			if (!(sv->buf[i] = strdup(we.we_wordv[i])))
+				die("strdup");
+		}
+		sv->len = we.we_wordc;
+		wordfree(&we);
+	} else {
+		sv->buf = bufalloc(NULL, n, sizeof(*sv->buf));
+		for (size_t i = 0; i < n; i++) {
+			if (!(sv->buf[i] = strdup(p[i])))
+				die("strdup");
+		}
+		sv->len = n;
+	}
 }
 
 bool
