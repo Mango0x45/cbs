@@ -781,7 +781,7 @@ pcquery(struct strv *vec, char *lib, int flags)
 	/* Remove trailing newline */
 	p[n - 1] = 0;
 
-	switch (wordexp(p, &we, 0)) {
+	switch (wordexp(p, &we, WRDE_NOCMD)) {
 	case WRDE_BADCHAR:
 	case WRDE_BADVAL:
 	case WRDE_SYNTAX:
