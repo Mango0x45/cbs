@@ -209,13 +209,17 @@ static int cmdwait(pid_t);
 static void cmdput(cmd_t);
 static void cmdputf(FILE *, cmd_t);
 
-/* Expand the environment variable s using /bin/sh expansion rules and store the
-   results in the given string vector.  If the environment variable is NULL or
-   empty, then store the strings specified by the array p of length n.
+/* Expand the environment variable s using /bin/sh expansion rules and append
+   the results in the given string vector.  If the environment variable is NULL
+   or empty, then store the strings specified by the array p of length n.
 
    env_or_default() is the same as env_or_defaultv() but you provide p as
-   variadic arguments. */
-static void env_or_defaultv(struct strv *, const char *s, char **p, size_t n);
+   variadic arguments.
+
+   If the pointer p is null, then no default value is appended to the given
+   string vector when the environment variable is not present. */
+static void env_or_defaultv(struct strv *, const char *s, char *_Nullable *p,
+                            size_t n);
 #define env_or_default(sv, s, ...) \
 	env_or_defaultv((sv), (s), _vtoa(__VA_ARGS__), lengthof(_vtoa(__VA_ARGS__)))
 
@@ -616,7 +620,8 @@ env_or_defaultv(struct strv *sv, const char *s, char **p, size_t n)
 
 		p = we.we_wordv;
 		n = we.we_wordc;
-	}
+	} else if (!p)
+		return;
 
 	sv->buf = bufalloc(sv->buf, sv->len + n, sizeof(*sv->buf));
 	for (size_t i = 0; i < n; i++) {
