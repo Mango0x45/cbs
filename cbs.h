@@ -614,21 +614,19 @@ env_or_defaultv(struct strv *sv, const char *s, char **p, size_t n)
 			die("wordexp");
 		}
 
-		sv->buf = bufalloc(NULL, we.we_wordc, sizeof(*sv->buf));
-		for (size_t i = 0; i < we.we_wordc; i++) {
-			if (!(sv->buf[i] = strdup(we.we_wordv[i])))
-				die("strdup");
-		}
-		sv->len = we.we_wordc;
-		wordfree(&we);
-	} else {
-		sv->buf = bufalloc(NULL, n, sizeof(*sv->buf));
-		for (size_t i = 0; i < n; i++) {
-			if (!(sv->buf[i] = strdup(p[i])))
-				die("strdup");
-		}
-		sv->len = n;
+		p = we.we_wordv;
+		n = we.we_wordc;
 	}
+
+	sv->buf = bufalloc(sv->buf, sv->len + n, sizeof(*sv->buf));
+	for (size_t i = 0; i < n; i++) {
+		if (!(sv->buf[sv->len + i] = strdup(p[i])))
+			die("strdup");
+	}
+	sv->len += n;
+
+	if (ev && *ev)
+		wordfree(&we);
 }
 
 bool
