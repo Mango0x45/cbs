@@ -40,6 +40,7 @@
 #ifdef __GNUC__
 #	pragma GCC diagnostic push
 #	pragma GCC diagnostic ignored "-Wunused-function"
+#	pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
 /* Assert that the user is building for a supported platform.  The only portable
