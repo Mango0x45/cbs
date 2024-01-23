@@ -20,6 +20,18 @@ All functions and macros are documented in cbs.h.
 CBS is very much inspired by Tsoding’s ‘Nob’.
 
 
+## Features
+
+— Simple and easy to understand API
+— Easy command building and execution
+— Capturing of command output
+— PkgConfig support
+— Thread pool support
+— Preprocessor-friendly variadic macros*
+
+*See the examples below
+
+
 ## Important
 
 This library works with the assumption that your compiled build script
