@@ -20,6 +20,22 @@ All functions and macros are documented in cbs.h.
 CBS is very much inspired by Tsoding’s ‘Nob’.
 
 
+## Important
+
+This library works with the assumption that your compiled build script
+*and* your build script source code are located in the **same
+directory**.  The general project structure of your project is intended
+to look like so:
+
+```
+.
+├── cbs.h   # This library
+├── make    # The compiled build script
+├── make.c  # The build script source
+└── …       # Your own files
+```
+
+
 ## Example
 
 Assuming you have a source file `my-file.c` — you can compile this build
