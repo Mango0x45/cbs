@@ -349,7 +349,7 @@ void
 strvfree(struct strv *v)
 {
 	free(v->buf);
-	*v = (struct strv){0};
+	memset(v, 0, sizeof(*v));
 }
 
 void *
