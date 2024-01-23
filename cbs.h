@@ -30,6 +30,9 @@
    the program on error.  If this is undesired behavior, feel free to edit the
    functions to return errors.
 
+   IMPORTANT NOTE: This library is built with the assumption that the source
+   file for your build script and your build script are in the SAME DIRECTORY.
+
    There are a few exceptions to the above rule, and they are documented.
 
    This library does not aim to ever support Windows */
@@ -150,7 +153,8 @@ ATTR_FMT noreturn static void die(const char *_Nullable, ...);
 ATTR_FMT noreturn static void diex(const char *, ...);
 
 /* Initializes some data required for this header to work properly.  This should
-   be the first thing called in main() with argc and argv passed. */
+   be the first thing called in main() with argc and argv passed.  It also
+   chdir()s into the directory where the build script is located. */
 static void cbsinit(int, char **);
 
 /* Get the number of items in the array a */
@@ -256,7 +260,10 @@ static bool foutdatedv(const char *base, const char **p, size_t n);
 /* Rebuild the build script if it has been modified, and execute the newly built
    script.  You should call the rebuild() macro at the very beginning of main(),
    but right after cbsinit().  You probably don’t want to call _rebuild()
-   directly. */
+   directly.
+
+   NOTE: This function/macro REQUIRES that the source for the build script and
+   the compiled build script are in the SAME DIRECTORY. */
 static void _rebuild(char *);
 #define rebuild() _rebuild(__FILE__)
 
@@ -391,6 +398,8 @@ diex(const char *fmt, ...)
 void
 cbsinit(int argc, char **argv)
 {
+	char *s;
+
 	_cbs_argc = argc;
 	_cbs_argv = bufalloc(nullptr, argc, sizeof(char *));
 	for (int i = 0; i < argc; i++) {
@@ -399,6 +408,15 @@ cbsinit(int argc, char **argv)
 			fprintf(stderr, "%s: strdup: %s\n", *argv, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
+	}
+
+	/* Cd to dirname(argv[0]).  We can’t use dirname(3) because it may modify
+	   the source string. */
+	if (s = strrchr(_cbs_argv[0], '/')) {
+		s[0] = '\0';
+		if (chdir(_cbs_argv[0]) == -1)
+			die("chdir: %s", s);
+		s[0] = '/';
 	}
 }
 
@@ -682,62 +700,44 @@ foutdatedv(const char *src, const char **deps, size_t n)
 	return false;
 }
 
-static char *
-_getcwd(void)
-{
-	char *buf = nullptr;
-	size_t n = 0;
-
-	for (;;) {
-		n += PATH_MAX;
-		buf = bufalloc(buf, n, sizeof(char));
-		if (getcwd(buf, n))
-			break;
-		if (errno != ERANGE)
-			die("getcwd");
-	}
-
-	return buf;
-}
-
 void
 _rebuild(char *src)
 {
-	char *cwd, *cpy1, *cpy2, *dn, *bn;
+	char *bbn, *sbn, *argv0;
 	cmd_t cmd = {0};
+	size_t bufsiz;
 
-	cwd = _getcwd();
-	if (!(cpy1 = strdup(*_cbs_argv)))
-		die("strdup");
-	if (!(cpy2 = strdup(*_cbs_argv)))
-		die("strdup");
-	dn = dirname(cpy1);
-	bn = basename(cpy2);
+	/* We assume that the compiled binary and the source file are in the same
+	   directory. */
+	if (sbn = strrchr(src, '/'))
+		sbn++;
+	else
+		sbn = src;
+	if (bbn = strrchr(*_cbs_argv, '/'))
+		bbn++;
+	else
+		bbn = src;
 
-	if (chdir(dn) == -1)
-		die("chdir: %s", dn);
-	if (!foutdated(bn, src)) {
-		if (chdir(cwd) == -1)
-			die("chdir: %s", cwd);
-		free(cpy1);
-		free(cpy2);
-		free(cwd);
+	if (!foutdated(bbn, sbn))
 		return;
-	}
 
 	cmdadd(&cmd, "cc");
 #ifdef CBS_PTHREAD
 	cmdadd(&cmd, "-lpthread");
 #endif
-	cmdadd(&cmd, "-o", bn, src);
+	cmdadd(&cmd, "-o", bbn, sbn);
 	cmdput(cmd);
 	if (cmdexec(cmd))
 		diex("Compilation of build script failed");
 
 	cmdclr(&cmd);
 
-	if (chdir(cwd) == -1)
-		die("chdir: %s", cwd);
+	argv0 = bufalloc(nullptr, strlen(bbn) + 3, 1);
+	*_cbs_argv = argv0;
+
+	*argv0++ = '.';
+	*argv0++ = '/';
+	strcpy(argv0, bbn);
 
 	cmdaddv(&cmd, _cbs_argv, _cbs_argc);
 	execvp(*cmd._argv, cmd._argv);
