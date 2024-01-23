@@ -87,7 +87,9 @@
 #	define noreturn [[noreturn]]
 #else
 #	include <stdbool.h>
+#	include <stddef.h>
 #	include <stdnoreturn.h>
+#	define nullptr NULL
 #endif
 
 /* Give helpful diagnostics when people use die() incorrectly on GCC.  C23
@@ -389,7 +391,7 @@ void
 cbsinit(int argc, char **argv)
 {
 	_cbs_argc = argc;
-	_cbs_argv = bufalloc(NULL, argc, sizeof(char *));
+	_cbs_argv = bufalloc(nullptr, argc, sizeof(char *));
 	for (int i = 0; i < argc; i++) {
 		if (!(_cbs_argv[i] = strdup(argv[i]))) {
 			/* We might not have set _cbs_argv[0] yet, so we can’t use die() */
@@ -430,7 +432,7 @@ binexists(const char *name)
 			return true;
 		}
 
-		p = strtok(NULL, ":");
+		p = strtok(nullptr, ":");
 	}
 
 	free(path);
@@ -447,14 +449,14 @@ cmdaddv(cmd_t *cmd, char **xs, size_t n)
 
 	memcpy(cmd->_argv + cmd->_len, xs, n * sizeof(*xs));
 	cmd->_len += n;
-	cmd->_argv[cmd->_len] = NULL;
+	cmd->_argv[cmd->_len] = nullptr;
 }
 
 void
 cmdclr(cmd_t *c)
 {
 	c->_len = 0;
-	*c->_argv = NULL;
+	*c->_argv = nullptr;
 }
 
 int
@@ -508,7 +510,7 @@ cmdexecb(cmd_t c, char **p, size_t *n)
 
 	close(fds[FD_W]);
 
-	buf = NULL;
+	buf = nullptr;
 	len = 0;
 
 	blksize = fstat(fds[FD_R], &sb) == -1 ? BUFSIZ : sb.st_blksize;
@@ -682,7 +684,7 @@ foutdatedv(const char *src, const char **deps, size_t n)
 static char *
 _getcwd(void)
 {
-	char *buf = NULL;
+	char *buf = nullptr;
 	size_t n = 0;
 
 	for (;;) {
@@ -761,7 +763,7 @@ pcquery(struct strv *vec, char *lib, int flags)
 	cmd_t c = {0};
 	wordexp_t we;
 
-	p = NULL;
+	p = nullptr;
 
 	cmdadd(&c, "pkg-config");
 	if (flags & PKGC_LIBS)
@@ -840,7 +842,7 @@ _tpwork(void *arg)
 		pthread_mutex_unlock(&tp->_mtx);
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 void
@@ -849,13 +851,13 @@ tpinit(tpool_t *tp, size_t n)
 	tp->_tcnt = n;
 	tp->_stop = false;
 	tp->_left = 0;
-	tp->_head = tp->_tail = NULL;
-	tp->_thrds = bufalloc(NULL, n, sizeof(pthread_t));
-	pthread_cond_init(&tp->_cnd, NULL);
-	pthread_mutex_init(&tp->_mtx, NULL);
+	tp->_head = tp->_tail = nullptr;
+	tp->_thrds = bufalloc(nullptr, n, sizeof(pthread_t));
+	pthread_cond_init(&tp->_cnd, nullptr);
+	pthread_mutex_init(&tp->_mtx, nullptr);
 
 	for (size_t i = 0; i < n; i++)
-		pthread_create(tp->_thrds + i, NULL, _tpwork, tp);
+		pthread_create(tp->_thrds + i, nullptr, _tpwork, tp);
 }
 
 void
@@ -868,7 +870,7 @@ tpfree(tpool_t *tp)
 	pthread_mutex_unlock(&tp->_mtx);
 
 	for (size_t i = 0; i < tp->_tcnt; i++)
-		pthread_join(tp->_thrds[i], NULL);
+		pthread_join(tp->_thrds[i], nullptr);
 
 	free(tp->_thrds);
 	while (tp->_head) {
@@ -890,7 +892,7 @@ _tpdeq(tpool_t *tp)
 	if (j) {
 		tp->_head = tp->_head->next;
 		if (!tp->_head)
-			tp->_tail = NULL;
+			tp->_tail = nullptr;
 	}
 
 	return j;
@@ -899,7 +901,7 @@ _tpdeq(tpool_t *tp)
 void
 tpenq(tpool_t *tp, tfunc_t fn, void *arg, tfree_func_t free)
 {
-	struct _tjob *j = bufalloc(NULL, 1, sizeof(struct _tjob));
+	struct _tjob *j = bufalloc(nullptr, 1, sizeof(struct _tjob));
 	*j = (struct _tjob){
 		.fn = fn,
 		.arg = arg,
