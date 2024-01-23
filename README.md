@@ -87,9 +87,9 @@ main(int argc, char **argv)
 
 ## Example With Threads
 
-This is like the previous example, but you should compile with -lpthread.  This
-is not the most efficient way to build a multi-file project, but this is simply
-for demonstration purposes.
+This is like the previous example, but you should compile with -lpthread.
+This is not the most efficient way to build a multi-file project, but
+this is simply for demonstration purposes.
 
 ```c
 #include <errno.h>
