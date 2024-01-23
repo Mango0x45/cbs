@@ -97,6 +97,43 @@ main(int argc, char **argv)
 ```
 
 
+## Example With Environment Variables
+
+In many cases a user may want to use environment variables to alter the
+build process.  They may want to specify their own compiler via `CC`,
+their own compiler flags via `CFLAGS`, or the installation directory via
+`DESTDIR` and `PREFIX`.  These are made easy to configure via
+`env_or_default()`.
+
+```c
+#include "cbs.h"
+
+#define CC     "cc"
+#define CFLAGS "-Wall", "-Wextra", "-O3"
+
+int
+main(int argc, char **argv)
+{
+    cmd_t c = {0};
+    struct strv sv = {0};
+
+    cbsinit(argc, argv);
+    rebuild();
+
+    /* Append the expanded values of ‘CC’ and ‘CFLAGS’ to ‘sv’ if they’re set,
+       using the defaults specified by the macros otherwise. */
+    env_or_default(&sv, "CC", CC);
+    env_or_default(&sv, "CFLAGS", CFLAGS);
+
+    cmdaddv(&c, sv.buf, sv.len);
+    cmdput(c);
+    (void)cmdexec(c);
+
+    strvfree(&sv);
+}
+```
+
+
 ## Example With Threads
 
 This is like the previous example, but you should compile with -lpthread.
