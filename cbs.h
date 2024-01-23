@@ -421,15 +421,26 @@ cbsinit(int argc, char **argv)
 }
 
 static size_t
-_next_powerof2(size_t n)
+_next_powerof2(size_t x)
 {
-	if (n && !(n & (n - 1)))
-		return n;
+#if defined(__has_builtin) && __has_builtin(__builtin_clzl)
+	x = x <= 1 ? 1 : 1 << (64 - __builtin_clzl(x - 1));
+#else
+	if (x) {
+		x--;
+		x |= x >> 1;
+		x |= x >> 2;
+		x |= x >> 4;
+		x |= x >> 8;
+		if (sizeof(size_t) >= 4)
+			x |= x >> 16;
+		if (sizeof(size_t) >= 8)
+			x |= x >> 32;
+	}
+	x++;
+#endif
 
-	n--;
-	for (size_t i = 1; i < sizeof(size_t); i <<= 1)
-		n |= n >> i;
-	return n + 1;
+	return x;
 }
 
 bool
