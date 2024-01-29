@@ -652,7 +652,7 @@ env_or_defaultv(struct strv *sv, const char *s, char **p, size_t n)
 
 		p = we.we_wordv;
 		n = we.we_wordc;
-	} else if (!p)
+	} else if (!n || !*p)
 		return;
 
 	sv->buf = bufalloc(sv->buf, sv->len + n, sizeof(*sv->buf));
