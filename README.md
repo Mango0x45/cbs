@@ -22,14 +22,12 @@ CBS is very much inspired by Tsoding’s ‘Nob’.
 
 ## Features
 
-— Simple and easy to understand API
-— Easy command building and execution
+— C99 and POSIX compliant
 — Capturing of command output
+— Easy command building and execution
 — PkgConfig support
+— Simple and easy to understand API
 — Thread pool support
-— Preprocessor-friendly variadic macros*
-
-*See the examples below
 
 
 ## Important
@@ -62,74 +60,40 @@ itself.
 ```c
 #include <stdlib.h>
 
+#define CBS_NO_THREADS
 #include "cbs.h"
 
-#define CC     "cc"
-#define CFLAGS "-Wall", "-Wextra", "-Werror", "-O3"
-#define TARGET "my-file"
+static char *cflags[] = {"-Wall", "-Wextra", "-Werror", "-O3"};
 
 int
 main(int argc, char **argv)
 {
-	int ec;
-	cmd_t cmd = {0};
-	struct strv v = {0};
-
-	cbsinit(argc, argv);
-	rebuild();
-
-	if (!foutdated(TARGET, TARGET ".c"))
-		return EXIT_SUCCESS;
-
-	cmdadd(&cmd, CC);
-	if (pcquery(&v, "liblux", PKGC_LIBS | PKGC_CFLAGS))
-		cmdaddv(&cmd, v.buf, v.len);
-	else
-		cmdadd(&cmd, "-llux");
-	cmdadd(&cmd, CFLAGS, "-o", TARGET, TARGET ".c");
-
-	cmdput(cmd);
-	if ((ec = cmdexec(cmd)) != EXIT_SUCCESS)
-		diex("%s failed with exit-code %d", *cmd._argv, ec);
-
-	return EXIT_SUCCESS;
-}
-```
-
-
-## Example With Environment Variables
-
-In many cases a user may want to use environment variables to alter the
-build process.  They may want to specify their own compiler via `CC`,
-their own compiler flags via `CFLAGS`, or the installation directory via
-`DESTDIR` and `PREFIX`.  These are made easy to configure via
-`env_or_default()`.
-
-```c
-#include "cbs.h"
-
-#define CC     "cc"
-#define CFLAGS "-Wall", "-Wextra", "-O3"
-
-int
-main(int argc, char **argv)
-{
-    cmd_t c = {0};
-    struct strv sv = {0};
-
+    /* Initialize the library, and rebuild this script if needed */
     cbsinit(argc, argv);
     rebuild();
 
-    /* Append the expanded values of ‘CC’ and ‘CFLAGS’ to ‘sv’ if they’re set,
-       using the defaults specified by the macros otherwise. */
-    env_or_default(&sv, "CC", CC);
-    env_or_default(&sv, "CFLAGS", CFLAGS);
+    /* If the compiled binary isn’t outdated, do nothing */
+    if (!foutdatedl("my-file", "my-file.c"))
+        return EXIT_SUCCESS;
 
-    cmdaddv(&c, sv.buf, sv.len);
-    cmdput(c);
-    (void)cmdexec(c);
+    /* Append ‘cc’ and our cflags to the command, but allow the user to use the
+       $CC and $CFLAGS environment variables to override them */
+    struct strs cmd = {0};
+    strspushenvl(&cmd, "CC", "cc");
+    strspushenv(&cmd, "CFLAGS", cflags, lengthof(cflags));
 
-    strvfree(&sv);
+    /* Call pkg-config with the --libs and --cflags options for the library
+      ‘liblux’, appending the result to our command.  If it fails then we
+      fallback to using -llux */
+    if (!pcquery(&cmd, "liblux", PC_LIBS | PC_CFLAGS))
+        strspushl(&cmd, "-llux");
+
+    /* Push the final arguments to our command */
+    strspushl(&cmd, "-o", "my-file", "-c", "my-file.c");
+
+    /* Print our command to stdout, and execute it */
+    cmdput(cmd);
+    return cmdexec(cmd);
 }
 ```
 
@@ -137,79 +101,81 @@ main(int argc, char **argv)
 ## Example With Threads
 
 This is like the previous example, but you should compile with -lpthread.
-This is not the most efficient way to build a multi-file project, but
-this is simply for demonstration purposes.
 
 ```c
-#include <errno.h>
-#include <string.h>
+#include <stdlib.h>
 
-#define CBS_PTHREAD
 #include "cbs.h"
 
-#define CC     "cc"
-#define CFLAGS "-Wall", "-Wextra", "-Werror", "-O3"
-#define TARGET "my-file"
-
-static const char *sources[] = {"foo.c", "bar.c", "baz.c"};
-static const char *objects[] = {"foo.o", "bar.o", "baz.o"};
+static char *cflags[] = {"-Wall", "-Wextra", "-Werror", "-O3"};
+static char *sources[] = {"foo.c", "bar.c", "baz.c"};
 
 static void build(void *);
 
 int
 main(int argc, char **argv)
 {
-	int ec, cpus;
-	cmd_t cmd = {0};
-	tpool_t tp;
-
 	cbsinit(argc, argv);
 	rebuild();
 
-	if (!foutdatedv(TARGET, sources, lengthof(sources)))
+	if (!foutdated("my-file", sources, lengthof(sources)))
 		return EXIT_SUCCESS;
 
-	if ((cpus = nproc()) == -1) {
-		if (errno)
-			die("nproc");
-		/* System not properly supported; default to 8 threads */
+    /* Get the number of CPUs available.  If this fails we fallback to 8. */
+    int cpus = nproc();
+	if (cpus == -1)
 		cpus = 8;
-	}
+
+    /* Create a thread pool, with one thread per CPU */
+    tpool tp;
 	tpinit(&tp, cpus);
 
+    /* For each of our source files, add a task to the thread pool to build
+       the file ‘sources[i]’ with the function ‘build’ */
 	for (size_t i = 0; i < lengthof(sources); i++)
 		tpenq(&tp, build, sources[i], NULL);
+
+    /* Wait for all the tasks to complete and free the thread pool */
 	tpwait(&tp);
 	tpfree(&tp);
 
-	cmdadd(&cmd, CC, "-o", TARGET);
-	cmdaddv(&cmd, objects, lengthof(objects));
-	cmdput(cmd);
-	if ((ec = cmdexec(cmd)) != EXIT_SUCCESS)
-		diex("%s failed with exit-code %d", *cmd._argv, ec);
+    struct strs cmd = {0};
+    strspushenvl(&cmd, "CC", "cc");
+    strspushl(&cmd, "-o", "my-file");
 
-	return EXIT_SUCCESS;
+    for (size_t i = 0; i < lengthof(sources); i++)
+        strspushl(&cmd, swpext(sources[i], "o"));
+
+	cmdput(cmd);
+    return cmdexec(cmd);
 }
 
 void
 build(void *arg)
 {
-	int ec;
-	char *dst, *src = arg;
-	cmd_t cmd = {0};
+    /* This function will be called by the thread pool with ‘arg’ set to a
+       filename such as ‘foo.c’ */
 
-	for (size_t i = 0; i < lengthof(sources); i++) {
-		/* All the sources and objects have 3 letter names + an extension */
-		if (strncmp(src, objects[i], 3) == 0) {
-			dst = objects[i];
-			break;
-		}
-	}
+    struct strs cmd = {0};
 
-	cmdadd(&cmd, CC, CFLAGS, "-o", dst, "-c", src);
-	cmdput(cmd);
-	if ((ec = cmdexec(cmd)) != EXIT_SUCCESS)
-		diex("%s failed with exit-code %d", *cmd._argv, ec);
-	free(cmd._argv);
+    strspushenvl(&cmd, "CC", "cc");
+    strspushenv(&cmd, "CFLAGS", cflags, lengthof(cflags));
+
+    /* Allocate a copy of the string ‘arg’, with the file extension replaced.
+       This will for example return ‘foo.o’ when given ‘foo.c’ */
+    char *object = swpext(arg, "o");
+
+    strspushl(&cmd, "-o", object, "-c", arg);
+
+    cmdput(cmd);
+    if (cmdexec(cmd) != EXIT_SUCCESS)
+        exit(EXIT_FAILURE);
+    free(object);
+    strsfree(&cmd);
 }
 ```
+
+
+## Documentation
+
+Coming soon!
