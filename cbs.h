@@ -47,7 +47,7 @@ struct strs {
 
 enum pkg_config_flags {
 	PC_CFLAGS = 1 << 0,
-	PC_LIBS = 1 << 1,
+	PC_LIBS   = 1 << 1,
 	PC_SHARED = 1 << 2,
 	PC_STATIC = 1 << 3,
 };
