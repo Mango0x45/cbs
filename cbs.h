@@ -66,24 +66,24 @@ static void strspushenv(struct strs *, const char *, char **, size_t);
 	strspushenv((xs), (ev), _vtoxs(__VA_ARGS__), lengthof(_vtoxs(__VA_ARGS__)))
 
 static bool fexists(const char *);
-static int fmdcmp(const char *, const char *);
+static int  fmdcmp(const char *, const char *);
 static bool fmdolder(const char *, const char *);
 static bool fmdnewer(const char *, const char *);
 static bool foutdated(const char *, char **, size_t);
 #define foutdatedl(s, ...)                                                     \
-	foutdated(s, _vtoxs(__VA_ARGS__), lengthof(_vtoxs(__VA_ARGS__)))
+	foutdated((s), _vtoxs(__VA_ARGS__), lengthof(_vtoxs(__VA_ARGS__)))
 
-static int cmdexec(struct strs);
+static int   cmdexec(struct strs);
 static pid_t cmdexec_async(struct strs);
-static int cmdexec_read(struct strs, char **, size_t *);
-static int cmdwait(pid_t);
-static void cmdput(struct strs);
-static void cmdfput(FILE *, struct strs);
+static int   cmdexec_read(struct strs, char **, size_t *);
+static int   cmdwait(pid_t);
+static void  cmdput(struct strs);
+static void  cmdfput(FILE *, struct strs);
 
 static char *swpext(const char *, const char *);
-static bool pcquery(struct strs *, const char *, int);
-static bool binexists(const char *);
-static int nproc(void);
+static bool  pcquery(struct strs *, const char *, int);
+static bool  binexists(const char *);
+static int   nproc(void);
 
 #ifndef CBS_NO_THREADS
 typedef void tjob(void *);
@@ -111,7 +111,7 @@ static void tpwait(tpool *);
 static void tpenq(tpool *, tjob *, void *, tjob_free *);
 #endif /* !CBS_NO_THREADS */
 
-static int _cbs_argc;
+static int    _cbs_argc;
 static char **_cbs_argv;
 
 /* Implementation */
@@ -364,10 +364,9 @@ cmdfput(FILE *fp, struct strs xs)
 	flockfile(fp);
 	for (size_t i = 0; i < xs.len; i++) {
 		bool safe = true;
-		char *p, *q;
+		const char *p = xs.buf[i];
 
-		p = q = xs.buf[i];
-		for (; *q; q++) {
+		for (const char *q = p; *q; q++) {
 			if (!strchr(_SHELL_SAFE, *q)) {
 				safe = false;
 				break;
@@ -378,7 +377,7 @@ cmdfput(FILE *fp, struct strs xs)
 			fputs(p, fp);
 		else {
 			putc('\'', fp);
-			for (q = p; *q; q++) {
+			for (const char *q = p; *q; q++) {
 				if (*q == '\'')
 					fputs("'\"'\"'", fp);
 				else
@@ -585,8 +584,8 @@ tpenq(tpool *tp, tjob *fn, void *arg, tjob_free *free)
 	struct _tqueue *q = malloc(sizeof(*q));
 	assert(q != NULL);
 	*q = (struct _tqueue){
-		.fn = fn,
-		.arg = arg,
+		.fn   = fn,
+		.arg  = arg,
 		.free = free,
 	};
 
