@@ -22,12 +22,12 @@ CBS is very much inspired by Tsoding’s ‘Nob’.
 
 ## Features
 
-— C99 and POSIX compliant
-— Capturing of command output
-— Easy command building and execution
-— PkgConfig support
-— Simple and easy to understand API
-— Thread pool support
+- C99 and POSIX compliant
+- Capturing of command output
+- Easy command building and execution
+- PkgConfig support
+- Simple and easy to understand API
+- Thread pool support
 
 
 ## Important
