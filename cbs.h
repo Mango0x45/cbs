@@ -52,7 +52,7 @@ enum pkg_config_flags {
 	PC_STATIC = 1 << 3,
 };
 
-void cbsinit(int, char **);
+static void cbsinit(int, char **);
 static void rebuild(const char *); /* Always call via macro wrapper */
 #define rebuild() rebuild(__FILE__)
 
