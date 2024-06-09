@@ -188,6 +188,8 @@ void
 strszero(struct strs *xs)
 {
 	xs->len = 0;
+	if (xs->cap > 0)
+		xs->buf[0] = NULL;
 }
 
 void
