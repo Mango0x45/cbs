@@ -15,7 +15,7 @@ simply aims to be a set of potentially useful functions and macros to
 make writing a build script in C a bit easier.  If there is functionality
 you are missing, then add it.  You’re a programmer aren’t you?
 
-All functions and macros are documented in cbs.h.
+All functions and macros are documented in this file.
 
 CBS is very much inspired by Tsoding’s ‘Nob’.
 
