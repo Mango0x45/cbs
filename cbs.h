@@ -327,8 +327,6 @@ cmdexec_read(struct strs xs, char **p, size_t *n)
 	}
 
 	close(fds[R]);
-	if (buf != NULL)
-		buf[*n] = 0;
 	free(buf);
 
 	return cmdwait(pid);
