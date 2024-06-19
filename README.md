@@ -73,7 +73,7 @@ main(int argc, char **argv)
 	rebuild();
 
 	/* If the compiled binary isn’t outdated, do nothing */
-	if (!foutdatedl("my-file", "my-file.c"))
+	if (fmdnewer("my-file", "my-file.c"))
 		return EXIT_SUCCESS;
 
 	/* Append ‘cc’ and our cflags to the command, but allow the user to use the
@@ -89,7 +89,7 @@ main(int argc, char **argv)
 		strspushl(&cmd, "-llux");
 
 	/* Push the final arguments to our command */
-	strspushl(&cmd, "-o", "my-file", "-c", "my-file.c");
+	strspushl(&cmd, "-o", "my-file", "my-file.c");
 
 	/* Print our command to stdout, and execute it */
 	cmdput(cmd);
