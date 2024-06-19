@@ -184,9 +184,9 @@ build(void *arg)
 #define CBS_NO_THREADS
 ```
 
-If this macro is defined before including `cbs.h`, then support for thread pools
-won’t be included meaning you don’t need to link with `-lpthread` when
-bootstrapping the build script.
+If this macro is defined before including `cbs.h`, then support for
+thread pools won’t be included meaning you don’t need to link with
+`-lpthread` when bootstrapping the build script.
 
 ---
 
@@ -198,9 +198,9 @@ Return the number of elements in the static array `xs`.
 
 ### Startup Functions
 
-These two functions should be called at the very beginning of your `main()`
-function in the order in which they are documented here for everything to work
-properly.
+These two functions should be called at the very beginning of your
+`main()` function in the order in which they are documented here for
+everything to work properly.
 
 ---
 
@@ -208,12 +208,13 @@ properly.
 void cbsinit(int argc, char **argv)
 ```
 
-Should be the first function called in `main()` and passed the same parameters
-received from `main()`.  It initializes some internal data, but it also changes
-the current working directory so that the running process is in the same
-directory as the location of the process.  For example if your build script is
-called `make` and you call it as `./build/make`, this function will change your
-working directory to `./build`.
+Should be the first function called in `main()` and passed the same
+parameters received from `main()`.  It initializes some internal data,
+but it also changes the current working directory so that the running
+process is in the same directory as the location of the process.  For
+example if your build script is called `make` and you call it as
+`./build/make`, this function will change your working directory to
+`./build`.
 
 ---
 
@@ -221,16 +222,16 @@ working directory to `./build`.
 #define rebuild() /* … */
 ```
 
-Should be called right after `cbsinit()`.  This function-like macro checks to
-see if the build script is outdated compared to its source file.  If it finds
-that the build script is outdated it rebuilds it before executing the new build
-script.
+Should be called right after `cbsinit()`.  This function-like macro
+checks to see if the build script is outdated compared to its source
+file.  If it finds that the build script is outdated it rebuilds it
+before executing the new build script.
 
 ### String Array Types and Functions
 
-The following types and functions all work on dynamically-allocated arrays of
-string, which make gradually composing a complete command that can be executed
-very simple.
+The following types and functions all work on dynamically-allocated
+arrays of string, which make gradually composing a complete command that
+can be executed very simple.
 
 ---
 
@@ -241,13 +242,14 @@ struct strs {
 };
 ```
 
-A type representing a dynamic array of strings.  The `len` and `cap` fields hold
-the length and capacity of the string array respectively, and the `buf` field is
-the actual array itself.  Despite being a sized array, `buf` is also guaranteed
-by all the functions that act on this structure to always be null-terminated.
+A type representing a dynamic array of strings.  The `len` and `cap`
+fields hold the length and capacity of the string array respectively, and
+the `buf` field is the actual array itself.  Despite being a sized array,
+`buf` is also guaranteed by all the functions that act on this structure
+to always be null-terminated.
 
-There is no initialization function for the `strs` structure.  To initialize the
-structure simply zero-initialize it:
+There is no initialization function for the `strs` structure.  To
+initialize the structure simply zero-initialize it:
 
 ```c
 int
@@ -266,12 +268,12 @@ main(int argc, char **argv)
 void strsfree(struct strs *xs)
 ```
 
-Deallocates all memory associated with the string array `xs`.  Note that this
-does **not** deallocate memory associated with the individual elements in the
-string array — that must still be done manually.
+Deallocates all memory associated with the string array `xs`.  Note that
+this does **not** deallocate memory associated with the individual
+elements in the string array — that must still be done manually.
 
-This function also zeros `xs` after freeing memory, so that the same structure
-can be safely reused afterwards.
+This function also zeros `xs` after freeing memory, so that the same
+structure can be safely reused afterwards.
 
 ---
 
@@ -279,10 +281,10 @@ can be safely reused afterwards.
 void strszero(struct strs *xs)
 ```
 
-Zeros the string array `xs` **without** deallocating any memory used by the
-string array.  This allows you to reuse the same structure for a different
-purpose without needing to reallocate a fresh new array, instead reusing the old
-one.
+Zeros the string array `xs` **without** deallocating any memory used by
+the string array.  This allows you to reuse the same structure for a
+different purpose without needing to reallocate a fresh new array,
+instead reusing the old one.
 
 ---
 
@@ -298,8 +300,8 @@ Append `n` strings from the string array `ys` to the end of `xs`.
 #define strspushl(xs, ...) /* … */
 ```
 
-Append the strings specified by the provided variable-arguments to the end of
-`xs`.
+Append the strings specified by the provided variable-arguments to the
+end of `xs`.
 
 ---
 
@@ -307,9 +309,10 @@ Append the strings specified by the provided variable-arguments to the end of
 void strspushenv(struct strs *xs, const char *ev, char **ys, size_t n)
 ```
 
-Append the value of the environment variable `ev` to the end of `xs`.  If the
-provided environment variable doesn’t exist or has the value of the empty
-string, then fallback to appending `n` strings from `ys` to the end of `xs`.
+Append the value of the environment variable `ev` to the end of `xs`.  If
+the provided environment variable doesn’t exist or has the value of the
+empty string, then fallback to appending `n` strings from `ys` to the end
+of `xs`.
 
 ---
 
@@ -317,7 +320,202 @@ string, then fallback to appending `n` strings from `ys` to the end of `xs`.
 #define strspushenvl(xs, ev, ...)
 ```
 
-Append the value of the environment variable `ev` to the end of `xs`.  If the
-provided environment variable doesn’t exist or has the value of the empty
-string, then fallback to appending the strings specified by the provided
-variable-arguments to the end of `xs`.
+Append the value of the environment variable `ev` to the end of `xs`.  If
+the provided environment variable doesn’t exist or has the value of the
+empty string, then fallback to appending the strings specified by the
+provided variable-arguments to the end of `xs`.
+
+### File Information Functions
+
+The following functions are useful for performing common checks on files.
+
+---
+
+```c
+bool fexists(const char *s);
+```
+
+Returns `true` if the file `s` exists, and `false` otherwise.  If you
+want to check if a certain binary is present on the host system, you
+should use `binexists()` instead.
+
+---
+
+```c
+int fmdcmp(const char *x, const char *y);
+```
+
+Returns a value greater than 0 if the file `x` was modified more recently
+than the file `y`, a value lower than 0 if the file `y` was modified more
+recently than the file `x`, and 0 if the two files were modified at the
+exact same time.
+
+---
+
+```c
+bool fmdnewer(const char *x, const char *y);
+bool fmdolder(const char *x, const char *y);
+```
+
+The `fmdnewer()` and `fmdolder()` functions return `true` if the file `x`
+was modified more- or less recently than the file `y` respectively, and
+`false` otherwise.
+
+---
+
+```c
+bool foutdated(const char *x, char **xs, size_t n);
+```
+
+Returns `true` if any of the `n` files in the array `xs` were modified
+more recently than the file `x`.
+
+---
+
+```c
+#define foutdatedl(x, ...)
+```
+
+Returns `true` if any of the files specified by the variable-arguments
+were modified more recently than the file `x`.
+
+### Command Execution Functions
+
+The following functions are used to execute commands.  It is a common
+task that you may want to interface with `pkg-config` or change the
+extension of a file while building up a command.  Functions to perform
+these tasks are not listed in this section, but instead listed later on
+in this document.
+
+---
+
+```c
+int cmdexec(struct strs cmd);
+```
+
+Execute the command composed by the command-line arguments specified in
+`cmd`, wait for the command to complete execution, and return its exit
+status.
+
+---
+
+```c
+int cmdexec_read(struct strs cmd, char **buf, size_t *bufsz);
+```
+
+Execute the command composed by the command-line arguments specified in
+`cmd`, wait for the command to complete execution, and return its exit
+status.  Additionally, the standard output of the command is captured and
+stored in the buffer pointed to by `buf`, with the length of the buffer
+being stored in `bufsz`.
+
+Note that `buf` will not be null-terminated, and must be freed by a call
+to `free()` after use.
+
+---
+
+```c
+pid_t cmdexec_async(struct strs cmd);
+```
+
+Execute the command composed by the command-line arguments specified in
+`cmd` asynchronously and return its process ID.
+
+---
+
+```c
+int cmdwait(pid_t pid);
+```
+
+Wait for the process specified by `pid` to terminate and return its exit
+status.
+
+---
+
+```c
+void cmdput(struct strs cmd);
+void fcmdput(FILE *stream, struct strs cmd);
+```
+
+Print a representation of the command composed by the command-line
+arguments specified in `cmd` to the standard output, with shell
+metacharacters properly quoted.
+
+This function is useful for implementing `make(1)`-like command-echoing
+behaviour.
+
+The `fcmdput()` function is identical to `cmdput()` except the output is
+written to `stream` as opposed to `stdout`.
+
+### Thread Pool Types and Functions
+
+TODO
+
+### Miscellaneous Functions
+
+The following functions are all useful, but don’t quite fall into any of
+the specific function categories and namespaces documented above.
+
+---
+
+```c
+bool binexists(const char *s);
+```
+
+Return `true` if a binary of the name `s` is located anywhere in the
+users `$PATH`, and `false` otherwise.
+
+---
+
+```c
+int nproc(void);
+```
+
+Return the number of available CPUs, or `-1` on error.
+
+---
+
+```c
+char *swpext(const char *file, const char *ext);
+```
+
+Return a copy of the string `file` with the file extension set to the
+string `ext`.  The file extension is defined to be the contents following
+the last occurance of a period in `file`.
+
+The returned string is allocated via `malloc()` and should be freed by a
+call to `free()` after use.
+
+---
+
+```c
+enum pkg_config_flags {
+    PC_CFLAGS = /* --cflags */,
+    PC_LIBS   = /* --libs   */,
+    PC_SHARED = /* --shared */,
+    PC_STATIC = /* --static */,
+};
+
+bool pcquery(struct strs *cmd, const char *lib, int flags);
+```
+
+Query `pkg-config` for the library `lib` and append the output to the
+command specified by `cmd`, returning `true` if successful and `false` if
+`pkg-config` exited with a failing exit code.
+
+`flags` is a bitwise-ORd set of values in the `pkg_config_flags`
+enumeration which control the flags passed to `pkg-config`.  The above
+synopsis documents which enumeration values map to which command-line
+flag.
+
+It may be useful to append a default value to `cmd` if `pkg-config` fails
+for whatever reason.  As an example you may do the following when linking
+to liburiparser:
+
+```c
+struct strs cmd = {0};
+strspushl(&cmd, "cc");
+if (!pcquery(&cmd, "uriparser", PC_CFLAGS | PC_LIBS))
+	strspushl(&cmd, "-luriparser"); /* fallback */
+strspushl(&cmd, "-o", "main", "main.c");
+```
