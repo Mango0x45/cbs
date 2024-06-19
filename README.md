@@ -317,7 +317,7 @@ of `xs`.
 ---
 
 ```c
-#define strspushenvl(xs, ev, ...)
+#define strspushenvl(xs, ev, ...) /* … */
 ```
 
 Append the value of the environment variable `ev` to the end of `xs`.  If
@@ -373,7 +373,7 @@ more recently than the file `x`.
 ---
 
 ```c
-#define foutdatedl(x, ...)
+#define foutdatedl(x, ...) /* … */
 ```
 
 Returns `true` if any of the files specified by the variable-arguments
