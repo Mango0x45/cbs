@@ -449,7 +449,73 @@ written to `stream` as opposed to `stdout`.
 
 ### Thread Pool Types and Functions
 
-TODO
+The following types and functions are used for implementing thread pools.
+This will be very helpful for speeding up build times.  If you intend to
+use thread pools you may want to see the documentation below for the
+`nproc()` function.
+
+---
+
+```c
+typedef void tjob(void *arg);
+```
+
+A type representing a function that takes a void pointer argument and
+performs some action.
+
+---
+
+```c
+typedef void tjob_free(void *arg);
+```
+
+A type representing a function that takes a void pointer argument a and
+frees it and its associated memory.
+
+---
+
+```c
+typedef /* ... */ tpool;
+```
+
+An opaque structure representing a thread pool.  A variable of this type
+needs to be passed to all the thread pool functions.
+
+---
+
+```c
+void tpinit(tpool *tp, size_t cnt);
+```
+
+Initialize the thread pool `tp` with `cnt` threads.  To use the number of
+threads available on the system you should query the `nproc()` function.
+
+---
+
+```c
+void tpfree(tpool *tp);
+```
+
+Free the resources used by the thread pool `tp`, and join all remaining
+threads.
+
+---
+
+```c
+void tpwait(tpool *tp);
+```
+
+Block until all tasks in the thread pool `tp` have finished execution.
+
+---
+
+```c
+void tpenq(tpool *tp, tjob *job, void *arg, tjob_free *free);
+```
+
+Enqueue a new job `job` to the thread pool `tp` for execution.  `job`
+will be called with the argument `arg`.  If `free` is non-NULL, it will
+be called with the argument `arg` after the job was completed.
 
 ### Miscellaneous Functions
 
