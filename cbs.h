@@ -351,13 +351,15 @@ cmdwait(pid_t pid)
 	return WIFEXITED(ws) ? WEXITSTATUS(ws) : 256;
 }
 
-/* import shlex
-
-   s = '#define _SHELL_SAFE "'
-   for c in map(chr, range(128)):
-       if not shlex._find_unsafe(c):
-           s += c
-   print(s + '"') */
+/*
+ * import shlex
+ *
+ * s = '#define _SHELL_SAFE "'
+ * for c in map(chr, range(128)):
+ *     if not shlex._find_unsafe(c):
+ *         s += c
+ * print(s + '"')
+ */
 #define _SHELL_SAFE                                                            \
 	"%+,-./0123456789:=@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
 
