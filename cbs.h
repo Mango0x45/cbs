@@ -230,14 +230,25 @@ fexists(const char *f)
 int
 fmdcmp(const char *lhs, const char *rhs)
 {
+	int errnol, errnor;
 	struct stat sbl, sbr;
 
-	assert(stat(lhs, &sbl) != -1);
-	assert(stat(rhs, &sbr) != -1);
+	stat(lhs, &sbl); errnol = errno;
+	stat(rhs, &sbr); errnor = errno;
+
+	assert(errnol == 0 || errnol == ENOENT);
+	assert(errnor == 0 || errnor == ENOENT);
+
+	if (errnol == ENOENT && errnor == ENOENT)
+		return 0;
+	if (errnol == ENOENT)
+		return -1;
+	if (errnor == ENOENT)
+		return +1;
 
 	return sbl.st_mtim.tv_sec == sbr.st_mtim.tv_sec
-	         ? sbl.st_mtim.tv_nsec - sbr.st_mtim.tv_nsec
-	         : sbl.st_mtim.tv_sec - sbr.st_mtim.tv_sec;
+	     ? sbl.st_mtim.tv_nsec - sbr.st_mtim.tv_nsec
+	     : sbl.st_mtim.tv_sec  - sbr.st_mtim.tv_sec;
 }
 
 bool
@@ -255,8 +266,6 @@ fmdolder(const char *lhs, const char *rhs)
 bool
 foutdated(const char *src, char **deps, size_t n)
 {
-	if (!fexists(src))
-		return true;
 	for (size_t i = 0; i < n; i++) {
 		if (fmdolder(src, deps[i]))
 			return true;
