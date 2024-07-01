@@ -314,6 +314,15 @@ the provided environment variable doesn’t exist or has the value of the
 empty string, then fallback to appending `n` strings from `ys` to the end
 of `xs`.
 
+The value of the environment variable `ev` will undergo `sh`-style
+word-splitting so that usages such as the following are legal:
+
+```sh
+$ CC="zig cc -target x86_64-linux-musl" ./make
+```
+
+NOTE: This function leaks memory!
+
 ---
 
 ```c
@@ -324,6 +333,15 @@ Append the value of the environment variable `ev` to the end of `xs`.  If
 the provided environment variable doesn’t exist or has the value of the
 empty string, then fallback to appending the strings specified by the
 provided variable-arguments to the end of `xs`.
+
+The value of the environment variable `ev` will undergo `sh`-style
+word-splitting so that usages such as the following are legal:
+
+```sh
+$ CC="zig cc -target x86_64-linux-musl" ./make
+```
+
+NOTE: This macro leaks memory!
 
 ### File Information Functions
 
@@ -585,3 +603,5 @@ if (!pcquery(&cmd, "uriparser", PC_CFLAGS | PC_LIBS))
 	strspushl(&cmd, "-luriparser"); /* fallback */
 strspushl(&cmd, "-o", "main", "main.c");
 ```
+
+NOTE: This function leaks memory!
