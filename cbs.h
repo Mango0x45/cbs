@@ -215,10 +215,22 @@ strspushenv(struct strs *xs, const char *ev, char **ys, size_t n)
 {
 	/* NOTE: Do your best to NOT modify any pushed envvar! */
 	char *p = getenv(ev);
-	if (p == NULL || *p == 0)
+	if (p == NULL || *p == 0) {
 		strspush(xs, ys, n);
-	else
-		strspush(xs, &p, 1);
+		return;
+	}
+
+	wordexp_t we;
+	assert(wordexp(p, &we, WRDE_NOCMD) == 0);
+
+	/* TODO: Memory leak! */
+	for (size_t i = 0; i < we.we_wordc; i++) {
+		char *w = strdup(we.we_wordv[i]);
+		assert(w != NULL);
+		strspushl(xs, w);
+	}
+
+	wordfree(&we);
 }
 
 bool
@@ -433,11 +445,14 @@ pcquery(struct strs *xs, const char *lib, int flags)
 
 	char **words = malloc(sizeof(char *) * we.we_wordc);
 	assert(words != NULL);
+
+	/* TODO: Memory leak! */
 	for (size_t i = 0; i < we.we_wordc; i++)
 		assert((words[i] = strdup(we.we_wordv[i])) != NULL);
 
 	strspush(xs, words, we.we_wordc);
 	wordfree(&we);
+	free(words);
 	free(buf);
 	return true;
 }
