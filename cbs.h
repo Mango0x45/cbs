@@ -288,7 +288,10 @@ foutdated(const char *src, char **deps, size_t n)
 int
 cmdexec(struct strs xs)
 {
-	return cmdwait(cmdexec_async(xs));
+	flockfile(stderr);
+	int ret = cmdwait(cmdexec_async(xs));
+	funlockfile(stderr);
+	return ret;
 }
 
 pid_t
